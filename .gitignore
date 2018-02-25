@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+#Ipython Notebook
+.ipynb_checkpoints
+
+# PyCharm
+/.idea
+
+# results
+/results/**
+# just for creating folders.
+!/results/features
+!/results/features/.gitignore
+!/results/datasets
+!/results/datasets/.gitignore
+!/results/models
+!/results/models/.gitignore
+!/results/analyses
+!/results/analyses/.gitignore
+!/results/plots
+!/results/plots/.gitignore
+
+# private data
+/private_data/**
+!/private_data/.gitignore
+!/private_data/shape_params_data/
+!/private_data/shape_params_data/**
