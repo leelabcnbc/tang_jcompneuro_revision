@@ -10,7 +10,7 @@ import os.path
 import h5py
 import skimage
 import numpy as np
-from skimage.transform import rescale
+from skimage.transform import downscale_local_mean, rescale
 
 from . import dir_dictionary
 from .stimulus_classification import get_subset_slice
@@ -23,6 +23,7 @@ _global_io_dict = {
 
 def _image_dataset_dict_constructor(*, image_dataset_path, color, trans, gray_version=None):
     assert len(trans) == 2
+    assert not color and gray_version is None, 'invalid for pattern stimulus'
     return {
         'image_dataset_path': image_dataset_path,
         'color': color,  # colorful or not.
@@ -123,13 +124,13 @@ def _load_image_dataset_normalize_trans(images, trans):
 
 def load_image_dataset(image_dataset_key, patch_size=40, color=False, trans=False, scale=None,
                        normalize_cnn_format=True, subset=None, raw=False,
-                       subtract_mean=False):
+                       subtract_mean=False, legacy_rescale=False):
     # combine original stuff with some of load_data_for_cnn_fitting
     # always return in [0,1] format, followed by some trans
     # first, get shape.
     gray_version_key = image_dataset_dict[image_dataset_key]['gray_version']
     is_original_dataset_color = image_dataset_dict[image_dataset_key]['color']
-
+    assert not color, "that is old behavior"
     if color:
         assert is_original_dataset_color
         key_to_use = image_dataset_key
@@ -140,13 +141,12 @@ def load_image_dataset(image_dataset_key, patch_size=40, color=False, trans=Fals
         else:
             key_to_use = image_dataset_key
 
-    num_im, height, width, *channel = get_image_dataset_shape(key_to_use)
+    num_im, height, width = get_image_dataset_shape(key_to_use)
     assert height == width  # this is true for our datasets.
     assert height >= patch_size
-    if color:
-        assert channel == [3]
-    else:
-        assert channel == []
+    # if color:
+    #     assert channel == [3]
+    # else:
 
     crop_slice = slice(height // 2 - patch_size // 2, height // 2 + patch_size // 2)
 
@@ -160,13 +160,21 @@ def load_image_dataset(image_dataset_key, patch_size=40, color=False, trans=Fals
     # normalize data
     if not raw:
         image_data = skimage.img_as_float(image_data)
-
+    assert image_data.ndim == 3
     # rescale
     if scale is not None:
-        # well. probably whether using pooling, which has less aliasing in theory,
-        # doesn't matter, as here we are using pattern images.
-        # for simplicity, just stick to what I have before.
-        image_data = np.asarray([rescale(im, scale=scale, mode='edge', preserve_range=True) for im in image_data])
+        if not legacy_rescale:
+            # well. probably whether using pooling, which has less aliasing in theory,
+            # doesn't matter, as here we are using pattern images.
+            # for simplicity, just stick to what I have before.
+
+            # well, let's go that way.
+            new_height, new_width = int(np.round(height * scale)), int(np.round(width * scale))
+            scale_factor = height // new_height
+            assert scale_factor * new_height == height and scale_factor * new_width == width
+            image_data = downscale_local_mean(image_data, (1, scale_factor, scale_factor))
+        else:
+            image_data = np.asarray([rescale(im, scale=scale, mode='edge', preserve_range=True) for im in image_data])
 
     # normalize shape
     if normalize_cnn_format:
@@ -196,7 +204,7 @@ def load_neural_dataset(neural_dataset_key, use_mean=True, return_positive=False
         y = f_neural_data[dataset_to_check][subset_slice, ...]
 
     if return_positive:
-        # only used for GLM poisson fitting.
+        # for fitting where positive number is needed.
         assert use_mean
         y -= np.min(y, axis=0, keepdims=True)
         # tried different bias. 0.01, 0.000001, 0.1, 1. seems smaller gives better performance.
