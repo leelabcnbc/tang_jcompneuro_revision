@@ -41,7 +41,6 @@ run all scripts using `python`. For example, `python scripts/preprocessing/conve
 
 scripts to convert Tang's raw data into HDF5 format ready for late processing.
 
-* `convert_image_dataset.py` convert image data sets. this actually converts more image data sets than what is
-   needed for this project, just for completeness.
-* `convert_tang_neural_dataset.py` convert neural data sets. this actually converts more neural
-   data sets than what is needed in this project, for for completeness.
+* `convert_image_dataset.py` convert image data sets.
+* `convert_tang_neural_dataset.py` convert neural data sets.
+* `split_datasets.py` generate train, val, and test datasets for pairs of neural and image data.

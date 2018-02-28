@@ -1,7 +1,7 @@
 """similar to misc.py in the previous tang-paper-2017 repo"""
 import os.path
 from collections import OrderedDict
-from itertools import product
+# from itertools import product
 
 import numpy as np
 
@@ -274,15 +274,15 @@ stimulus_label_dict_tang = {
 }
 
 
-# generate all subsets needed
-def get_reference_subset_list(*, percentage_list=(None, 25, 50, 75)):
-    base_subsets = ('OT', 'nonOT', 'all')
-    list_all = []
-    for base_subset, per_this in product(base_subsets, percentage_list):
-        # TODO if per_this is float, maybe need some work to convert it to string.
-        suffix = '' if per_this is None else f'+{per_this}_0'  # just do one shuffling.
-        list_all.append(base_subset + suffix)
-    return list_all
+# # generate all subsets needed
+# def get_reference_subset_list(*, percentage_list=(None, 25, 50, 75)):
+#     base_subsets = ('OT', 'nonOT', 'all')
+#     list_all = []
+#     for base_subset, per_this in product(base_subsets, percentage_list):
+#         # TODO if per_this is float, maybe need some work to convert it to string.
+#         suffix = '' if per_this is None else f'+{per_this}_0'  # just do one shuffling.
+#         list_all.append(base_subset + suffix)
+#     return list_all
 
 
 def decompose_subset(subset):
@@ -299,16 +299,22 @@ def decompose_subset(subset):
         return subset_proper, subset_param
 
 
+num_ot_dict = {
+    'Shape_9500': 1600,
+    'Shape_4605': 800,
+}
+
+
+#
 def get_subset_slice(dataset, subset):
+    """when subset is complex (with `+` in it), the return value won't be a slice."""
+    assert dataset in {'Shape_9500', 'Shape_4605'}
+
     if subset is None or subset == 'all':
         return slice(None)
 
-    """when subset is complex (with `+` in it), the return value won't be a slice."""
-    assert dataset in {'Shape_9500', 'Shape_4605'}
-    num_ot = {
-        'Shape_9500': 1600,
-        'Shape_4605': 800,
-    }[dataset]
+
+    num_ot = num_ot_dict[dataset]
 
     # num_total = {
     #     'Shape_9500': 9500,
