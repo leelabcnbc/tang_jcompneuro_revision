@@ -93,13 +93,23 @@ def _output_counter_list(labels, ref_keys=None, return_keys=False):
         return counter_vec, ref_keys
 
 
-def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val):
+def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val, train_percentage):
+    num_test = int(np.ceil(labels.size * 0.2))
+    # np.cell is the one used in sklearn.
+    num_train_val = int(np.ceil(train_percentage/100*(labels.size - num_test)))
+    assert num_test > 0 and test_idx.shape == (num_test,)
     if has_val:
         assert val_idx is not None
         check_list = (train_idx, val_idx, test_idx)
+        num_val = int(np.ceil(num_train_val * 0.1))
+        num_train = num_train_val - num_val
+        assert num_val > 0 and val_idx.shape == (num_val,)
+        assert num_train > 0 and train_idx.shape == (num_train,)
     else:
         assert val_idx is None
         check_list = (train_idx, test_idx)
+        num_train = num_train_val
+        assert num_train > 0 and train_idx.shape == (num_train,)
 
     # first, let's see proportion of labels.
     counter_vec_ref, ref_keys = _output_counter_list(labels, return_keys=True)
@@ -168,7 +178,7 @@ def save_one(neural_dataset_key,
     # and store everything.
     # always use positive version. so that I can fit anything.
     # all these indices are relative to the subset version.
-    _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val)
+    _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val, train_percentage)
 
     # first, load image
     image_this = load_image_dataset(image_dataset_key, trans=True, scale=0.5, subset=subset)
