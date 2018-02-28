@@ -76,16 +76,21 @@ def _save_one_set(X, y, train_idx, val_idx, test_idx, dataset_name, data_file):
             f_out[dataset_name + '/' + index_name].attrs['index'] = index_this
 
 
-def _output_counter_list(labels):
+def _output_counter_list(labels, ref_keys=None, return_keys=False):
     assert labels.shape == (labels.size,)
     ctr = Counter(labels)
+    if ref_keys is None:
+        ref_keys = sorted(ctr.keys())
     counter_vec = []
-    for label in sorted(ctr.keys()):
-        counter_vec.append(ctr[label])
+    for label in ref_keys:
+        counter_vec.append(ctr.get(label, 0))
     counter_vec = np.asarray(counter_vec)
     counter_vec = counter_vec / counter_vec.sum()
     assert np.all(np.isfinite(counter_vec))
-    return counter_vec
+    if not return_keys:
+        return counter_vec
+    else:
+        return counter_vec, ref_keys
 
 
 def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val):
@@ -97,7 +102,7 @@ def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val):
         check_list = (train_idx, test_idx)
 
     # first, let's see proportion of labels.
-    counter_vec_ref = _output_counter_list(labels)
+    counter_vec_ref, ref_keys = _output_counter_list(labels, return_keys=True)
     everything = []
     for index_this in check_list:
         assert isinstance(index_this, np.ndarray)
@@ -110,10 +115,10 @@ def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val):
         everything.append(index_this.copy())
 
         # check label proportion
-        counter_vec_this = _output_counter_list(labels[index_this])
+        counter_vec_this = _output_counter_list(labels[index_this], ref_keys=ref_keys)
         assert counter_vec_ref.shape == counter_vec_this.shape
         # this is good enough to account for roundoff errors.
-        assert abs(counter_vec_this - counter_vec_ref).max() < 0.01
+        assert abs(counter_vec_this - counter_vec_ref).max() < 0.05
 
     # check no overlap
     everything = np.concatenate(everything)
@@ -141,6 +146,12 @@ def save_one(neural_dataset_key,
     # create shuffler.
     # 20% for testing, consistent with previous setup (5 fold).
     train_val_idx, test_idx = one_shuffle(labels, 0.2, seed)
+
+    # remove train + val data
+    if train_percentage != 100:
+        train_val_idx = train_val_idx[one_shuffle(labels[train_val_idx], train_percentage / 100, seed)[1]]
+
+    # finally, another shuffle.
     if has_val:
         # use 10% of training for val.
         train_idx, val_idx = one_shuffle(labels[train_val_idx], 0.1, seed)
@@ -149,10 +160,6 @@ def save_one(neural_dataset_key,
     else:
         train_idx = train_val_idx
         val_idx = None
-
-    # finally, another shuffle.
-    if train_percentage != 100:
-        train_idx = train_idx[one_shuffle(labels[train_idx], train_percentage / 100, seed)[1]]
 
     # ok. test check the counters check.
     # and they don't overlap.
