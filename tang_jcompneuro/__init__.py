@@ -5,7 +5,7 @@ from sys import version_info
 assert version_info >= (3, 6), "must be python 3.6 or higher!"
 
 result_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'results'))
-print("result root is at {}".format(result_root))
+# print("result root is at {}".format(result_root))
 dir_dictionary = {
     'datasets': os.path.join(result_root, 'datasets'),
     'features': os.path.join(result_root, 'features'),
