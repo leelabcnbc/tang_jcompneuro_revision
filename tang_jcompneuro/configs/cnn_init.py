@@ -1,4 +1,4 @@
-"""optimization related configs"""
+"""initialization related configs"""
 
 from collections import OrderedDict
 

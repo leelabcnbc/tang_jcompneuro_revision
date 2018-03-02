@@ -6,14 +6,17 @@ see https://github.com/leelabcnbc/thesis-proposal-yimeng/blob/master/thesis_prop
 """
 
 import torch
-from torch import nn
+from torch import nn, optim
 from torch.nn import functional as F
 from torch.nn import init as nn_init
 import math
+from copy import deepcopy
 import numpy as np
 from collections import OrderedDict
 from .configs.cnn_arch import sanity_check_arch_config
 from .configs.cnn_init import sanity_check_init_config
+from .configs.cnn_opt import sanity_check_opt_config, sanity_check_one_optimizer_opt_config
+from torch.nn.functional import mse_loss
 
 
 class FactoredLinear2D(nn.Module):
@@ -307,3 +310,92 @@ class CNN(nn.Module):
             x = self.final_act(x)
 
         return x
+
+
+def get_optimizer(model: CNN, optimizer_config: dict):
+    assert sanity_check_one_optimizer_opt_config(optimizer_config)
+    # always learn everything.
+    if optimizer_config['optimizer_type'] == 'sgd':
+        optimizer_this = optim.SGD(model.parameters(), lr=optimizer_config['lr'],
+                                   momentum=optimizer_config['momentum'])
+    elif optimizer_config['optimizer_type'] == 'adam':
+        optimizer_this = optim.Adam(model.parameters(), lr=optimizer_config['lr'])
+    else:
+        raise NotImplementedError
+    return optimizer_this
+
+
+def get_conv_loss(opt_conv_config, conv_module_list):
+    sum_list = []
+    for m, s in zip(conv_module_list, opt_conv_config):
+        w_this: nn.Parameter = m.weight
+
+        if s['l2'] != 0:
+            sum_list.append(s['l2'] * 0.5 * torch.sum(w_this ** 2))
+        if s['l1'] != 0:
+            sum_list.append(s['l1'] * torch.sum(torch.abs(w_this)))
+        if m.bias is not None:
+            if s['l2_bias'] != 0:
+                sum_list.append(s['l2_bias'] * 0.5 * torch.sum(m.bias ** 2))
+            if s['l1_bias'] != 0:
+                sum_list.append(s['l1_bias'] * torch.sum(torch.abs(m.bias)))
+
+    return sum(sum_list)
+
+
+def get_fc_loss(opt_fc_config, fc_module):
+    sum_list = []
+    if isinstance(fc_module, nn.Linear):
+        # simple
+        w_this: nn.Parameter = fc_module.weight
+        if opt_fc_config['l2'] != 0:
+            sum_list.append(opt_fc_config['l2'] * 0.5 * torch.sum(w_this ** 2))
+        if opt_fc_config['l1'] != 0:
+            sum_list.append(opt_fc_config['l1'] * torch.sum(torch.abs(w_this)))
+    elif isinstance(fc_module, FactoredLinear2D):
+        w_this_1: nn.Parameter = fc_module.weight_feature
+        w_this_2: nn.Parameter = fc_module.weight_spatial
+        if opt_fc_config['l2'] != 0:
+            sum_list.append(opt_fc_config['l2'] * 0.5 * torch.sum(w_this_1 ** 2))
+            sum_list.append(opt_fc_config['l2'] * 0.5 * torch.sum(w_this_2 ** 2))
+        if opt_fc_config['l1'] != 0:
+            sum_list.append(opt_fc_config['l1'] * torch.sum(torch.abs(w_this_1)))
+            sum_list.append(opt_fc_config['l1'] * torch.sum(torch.abs(w_this_2)))
+    else:
+        raise NotImplementedError
+
+    if fc_module.bias is not None:
+        if opt_fc_config['l2_bias'] != 0:
+            sum_list.append(opt_fc_config['l2_bias'] * 0.5 * torch.sum(fc_module.bias ** 2))
+        if opt_fc_config['l1_bias'] != 0:
+            sum_list.append(opt_fc_config['l1_bias'] * torch.sum(torch.abs(fc_module.bias)))
+    return sum(sum_list)
+
+
+def get_output_loss(yhat, y, loss_type):
+    if loss_type == 'mse':
+        return mse_loss(yhat, y)
+    elif loss_type == 'poisson':
+        # 1e-5 is for numerical stability.
+        # same in NIPS2017 (mask CNN) code.
+        return torch.mean(yhat - y * torch.log(yhat + 1e-5))
+    else:
+        raise NotImplementedError
+
+
+def get_loss(opt_config: dict, model: CNN = None, strict=True):
+    assert sanity_check_opt_config(opt_config)
+    opt_config = deepcopy(opt_config)
+    # we don't need model. but that can be of help.
+    if strict:
+        assert model is not None
+    if model is not None:
+        assert len(model.conv_module_list) == len(opt_config['conv'])
+
+    def loss_func_inner(yhat, y, model_this: CNN):
+        conv_loss = get_conv_loss(opt_config['conv'], model_this.conv_module_list)
+        fc_loss = get_fc_loss(opt_config['fc'], model_this.fc.fc)
+        output_loss = get_output_loss(yhat, y, opt_config['loss'])
+        return conv_loss + fc_loss + output_loss
+
+    return loss_func_inner
