@@ -17,4 +17,5 @@ dir_dictionary = {
     'shape_params_data': os.path.abspath(os.path.join(result_root, '..', 'private_data',
                                                       'shape_params_data')),
     'package': os.path.abspath(os.path.dirname(__file__)),
+    'root': os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
 }

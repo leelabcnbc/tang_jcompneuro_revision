@@ -74,7 +74,7 @@ def eval_fn(yhat, y):
 
 def train_one_case(model, datasets, opt_config,
                    seed=None, legacy=False, legacy_epoch=75,
-                   shuffle_train=True):
+                   shuffle_train=True, show_every=1000):
     assert len(datasets) == 6
     dataset_train, dataset_test, dataset_val = generate_datasets(
         *datasets, per_epoch_train=not legacy, shuffle_train=shuffle_train
@@ -118,7 +118,7 @@ def train_one_case(model, datasets, opt_config,
             # 'output_loss' is what we care actually,
             # such as MSE, or corr, etc.
             'early_stopping_field': 'neg_corr',
-            'show_every': 1000,
+            'show_every': show_every,
         }
 
     # then train.

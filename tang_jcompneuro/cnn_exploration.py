@@ -6,10 +6,10 @@ from copy import deepcopy
 import numpy as np
 from .cell_classification import compute_cell_classification
 from .cell_stats import compute_ccmax
-from .configs import cnn_arch, cnn_init
+from .configs import cnn_arch, cnn_init, cnn_opt
 
 
-def neuron_to_explore_idx(each_class_count=2):
+def neuron_to_explore_idx(each_class_count=2, merged=False):
     # I will get the highest-ccmax neurons for each of 7 subclasses.
     # this is also an after-thought, given that
     # those with high ccmax turns out to be explained the best.
@@ -60,7 +60,10 @@ def neuron_to_explore_idx(each_class_count=2):
             best_one_index = index_this_class[np.argsort(ccmax_this_class)[::-1][:each_class_count]]
             this_dict[class_to_check_this] = OrderedDict(
                 [(k, v) for k, v in zip(best_one_index, ccmax_this[best_one_index])])
-        overall_dict[subset] = this_dict
+        if not merged:
+            overall_dict[subset] = this_dict
+        else:
+            overall_dict[subset] = sorted(set.union(*[set(v.keys()) for v in this_dict.values()]))
 
     return overall_dict
 
@@ -80,13 +83,14 @@ def _generate_all_conv_config_generic(num_channel_list, pooling_dict, kernel_siz
     for num_channel in num_channel_list:
         for pool_name, pool_config in pooling_dict.items():
             for bn in (
-                    True,  # BN doesn't work. probably because too many same-colored patch,
-                             # creating zero var batches.
-                             # this can lead to numerical instability,
-                             # check
-                             # increasing bn_eps may help. however, that defeats the purpose of BN.
-                           # for details. see
-                           #
+                    # True,  # BN doesn't work. probably because too many same-colored patch,
+                    # creating zero var batches.
+                    # this can lead to numerical instability,
+                    # check
+                    # increasing bn_eps may help. however, that defeats the purpose of BN.
+                    # for details. see
+                    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/76cb8d906ee3625eed9894d2b3317678291a4470/results_ipynb/single_neuron_exploration/debug/neuron_553.ipynb
+                    #
                     False,
             ):
                 bn_prefix = 'bn' if bn else 'nobn'
@@ -166,8 +170,8 @@ def one_layer_models_to_explore():
             all_config_dict[conv_name + '_' + fc_name] = cnn_arch.generate_one_config(
                 [deepcopy(conv_config)], deepcopy(fc_config),
                 # 'softplus',  # too slow convergence. maybe using BN without can increase convergence much faster.
-                               # maybe that's what NIPS2017 paper does.
-                'relu',      # this has much better convergence.
+                # maybe that's what NIPS2017 paper does.
+                'relu',  # this has much better convergence.
                 True
             )
 
@@ -238,4 +242,63 @@ def opt_configs_to_explore():
     #    hopefully I don't need to deal with it,
     #    as I want everything to be as simple as possible.
     #
-    pass
+    # legacy stuff work on both bias and non bias.
+    # then I will add some more controlled ones.
+    #
+    # conv has 0.001/0.0001 L2
+    # fc has 0.001/0.0001 L2 or L1.
+    # so eight combinations.
+    # all not applied to bias.
+    #
+    #
+    # try both SGD and Adam.
+    #
+    #
+    #
+    # so in total 8x2 + 3 (legacy) = 19.
+    def layer_gen(x):
+        return cnn_opt.generate_one_layer_opt_config(l1=0.0, l2=x, l1_bias=0.0, l2_bias=0.0)
+
+    def layer_gen_l1(x):
+        return cnn_opt.generate_one_layer_opt_config(l1=x, l2=0.0, l1_bias=0.0, l2_bias=0.0)
+
+    # generate all conv stuff.
+    conv_dict = OrderedDict()
+    conv_dict['1e-3L2'] = [layer_gen(0.001)]
+    conv_dict['1e-4L2'] = [layer_gen(0.0001)]
+
+    fc_dict = OrderedDict()
+    fc_dict['1e-3L2'] = layer_gen(0.001)
+    fc_dict['1e-4L2'] = layer_gen(0.0001)
+    fc_dict['1e-3L1'] = layer_gen_l1(0.001)
+    fc_dict['1e-4L1'] = layer_gen_l1(0.0001)
+
+    opt_dict = OrderedDict()
+    opt_dict['sgd'] = cnn_opt.generate_one_optimizer_config('sgd')
+    # 0.001 seems too slow.
+    # 0.01 seems to make learning much worse.
+    opt_dict['adam005'] = cnn_opt.generate_one_optimizer_config('adam', lr=0.005)
+    opt_dict['adam002'] = cnn_opt.generate_one_optimizer_config('adam', lr=0.002)
+    opt_dict['adam001'] = cnn_opt.generate_one_optimizer_config('adam', lr=0.001)
+
+    # maybe I should also check out loss
+    loss_dict = OrderedDict()
+    loss_dict['mse'] = 'mse'
+
+    # not doable, because I don't have a final nonlinearity.
+    # loss_dict['poisson'] = 'poisson'
+
+    result_dict = OrderedDict()
+
+    for (conv_name, conv_val), (fc_name, fc_val), (opt_name, opt_val), (loss_name, loss_val) in product(
+            conv_dict.items(), fc_dict.items(), opt_dict.items(), loss_dict.items()
+    ):
+        result_dict[f'{conv_name}_{fc_name}_{opt_name}_{loss_name}'] = cnn_opt.generate_one_opt_config(
+            deepcopy(conv_val), deepcopy(fc_val), loss_val, deepcopy(opt_val)
+        )
+
+    # append legacy ones.
+    legacy_dict = cnn_opt.legacy_opt_generator()
+    assert result_dict.keys() & legacy_dict.keys() == set()
+    result_dict.update(legacy_dict)
+    return result_dict
