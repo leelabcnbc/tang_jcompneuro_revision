@@ -51,19 +51,22 @@ def generate_one_fc_config(factored=False, dropout=None):
 
 
 # actual generators
-
-def legacy_one_layer_generator(num_channel):
+def generate_one_config(conv, fc, act_fn, linear_output):
     config = dict()
-    pool_config = generate_one_pool_config(8, 4)
-    config['conv'] = [
-        generate_one_conv_config(9, num_channel, pool=pool_config)
-    ]
-    config['fc'] = generate_one_fc_config()
-    config['act_fn'] = 'relu'
-    config['linear_output'] = True
-
+    config['conv'] = conv
+    config['fc'] = fc
+    config['act_fn'] = act_fn
+    config['linear_output'] = linear_output
     assert sanity_check_arch_config(config)
     return config
+
+
+def legacy_one_layer_generator(num_channel):
+    pool_config = generate_one_pool_config(8, 4)
+
+    return generate_one_config([
+        generate_one_conv_config(9, num_channel, pool=pool_config)
+    ], generate_one_fc_config(), 'relu', True)
 
 
 def generate_all_arch():

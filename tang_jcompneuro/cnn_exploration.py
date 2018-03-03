@@ -1,9 +1,12 @@
 """this file saves some initial efforts for exploration of single neuron CNN hyper parameters."""
 
 from collections import OrderedDict
+from itertools import product
+from copy import deepcopy
 import numpy as np
 from .cell_classification import compute_cell_classification
 from .cell_stats import compute_ccmax
+from .configs import cnn_arch, cnn_init
 
 
 def neuron_to_explore_idx(each_class_count=2):
@@ -62,7 +65,105 @@ def neuron_to_explore_idx(each_class_count=2):
     return overall_dict
 
 
-def one_layer_models_to_explore():
+def generate_all_fc_config():
+    fc_config_dict = OrderedDict()
+    fc_config_dict['vanilla'] = cnn_arch.generate_one_fc_config(False, None)
+    # standard dropout
+    fc_config_dict['dropout'] = cnn_arch.generate_one_fc_config(False, 0.5)
+    fc_config_dict['factored'] = cnn_arch.generate_one_fc_config(True)
+    return fc_config_dict
+
+
+def _generate_all_conv_config_generic(num_channel_list, pooling_dict, kernel_size):
+    prefix = f'k{kernel_size}'
+    conv_dict = OrderedDict()
+    for num_channel in num_channel_list:
+        for pool_name, pool_config in pooling_dict.items():
+            for bn in (True, False):
+                bn_prefix = 'bn' if bn else 'nobn'
+                conv_dict[f'{prefix}c{num_channel}_{bn_prefix}_{pool_name}'] = cnn_arch.generate_one_conv_config(
+                    kernel_size, num_channel, bn=bn, pool=pool_config
+                )
+
+    return conv_dict
+
+
+def _generate_all_conv_config_9x9(num_channel_list):
+    # 9x9 gives 12x12 output.
+    #    then try output
+    #    2x2 pooling (size 8, stride 4) w or w/o dropout
+    #    2x2 pooling (size 6, stride 6) w or w/o dropout
+    #
+    #    4 x 4 pooling (size 6, stride 2) w or w/o dropout
+    #    4 x 4 pooling (size 3, stride 3) w or w/o dropout
+    #
+    #    no pooling. readout. hopefully, things will be similar.
+    pooling_dict = OrderedDict()
+    # use JCNS paper notation.
+    pooling_dict['k8s4max'] = cnn_arch.generate_one_pool_config(8, 4)
+    pooling_dict['k6s6max'] = cnn_arch.generate_one_pool_config(6, 6)
+    pooling_dict['k6s2max'] = cnn_arch.generate_one_pool_config(6, 2)
+    pooling_dict['k3s3max'] = cnn_arch.generate_one_pool_config(3, 3)
+    pooling_dict['nopool'] = None
+
+    conv_dict = _generate_all_conv_config_generic(num_channel_list, pooling_dict, 9)
+
+    return conv_dict
+
+
+def _generate_all_conv_config_13x13(num_channel_list):
+    # 13x13 gives 8x8 output.
+    #    then try
+    #    2x2 pooling (size 4, stride 4) w or w/o dropout
+    #    2x2 pooling (size 6, stride 2) w or w/o dropout
+    #
+    #    4x4 pooling (size 2, stride 2) w or w/o dropout
+    #
+    #    no pooling.
+    pooling_dict = OrderedDict()
+    # use JCNS paper notation.
+    pooling_dict['k4s4max'] = cnn_arch.generate_one_pool_config(4, 4)
+    pooling_dict['k6s2max'] = cnn_arch.generate_one_pool_config(6, 2)
+    pooling_dict['k2s2max'] = cnn_arch.generate_one_pool_config(2, 2)
+    pooling_dict['nopool'] = None
+
+    conv_dict = _generate_all_conv_config_generic(num_channel_list, pooling_dict, 13)
+
+    return conv_dict
+
+
+def generate_all_conv_config(num_channel_list_list):
+    conv_dict_9 = _generate_all_conv_config_9x9(num_channel_list_list[0])
+    conv_dict_13 = _generate_all_conv_config_13x13(num_channel_list_list[1])
+    assert conv_dict_9.keys() & conv_dict_13.keys() == set()
+    conv_dict_9.update(conv_dict_13)
+    return conv_dict_9
+
+
+def one_layer_models_to_explore(add_old_ones=True):
+    num_channel_list = (3, 6, 9, 12, 15)
+    num_channel_list_2 = (3, 6, 9)
+    fc_dict = generate_all_fc_config()
+    conv_dict = generate_all_conv_config([num_channel_list, num_channel_list_2])
+
+    # then let's generate.
+    all_config_dict = OrderedDict()
+
+    for (conv_name, conv_config), (fc_name, fc_config) in product(
+            conv_dict.items(), fc_dict.items()
+    ):
+        if (conv_name.endswith('nopool') and fc_name == 'factored') or \
+                (not conv_name.endswith('nopool') and fc_name != 'factored'):
+            all_config_dict[conv_name + '_' + fc_name] = cnn_arch.generate_one_config(
+                [deepcopy(conv_config)], deepcopy(fc_config), 'softplus', True
+            )
+    if add_old_ones:
+        # add the reference old one.
+        assert 'legacy_b12' not in all_config_dict
+        all_config_dict['legacy_b12'] = cnn_arch.legacy_one_layer_generator(12)
+
+    return all_config_dict
+
     # return a list of different arch configs
     # to try.
     #
@@ -97,13 +198,18 @@ def one_layer_models_to_explore():
     #
     #    no pooling.
     #
-    pass
-    # so in total 5 x 2 x (9 + 7) = 160 structures.
+    # only try softplus.
+    #
+    # so in total 5 x 2 x 9 +  3 x 2 x 7 = 132 structures.
 
 
 def two_layer_models_to_explore():
     # do this after finishing one layer.
     pass
+
+
+def init_config_to_use_fn():
+    return cnn_init.legacy_generator()
 
 
 def opt_configs_to_explore():

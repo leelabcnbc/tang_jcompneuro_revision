@@ -103,6 +103,14 @@ def _check_input_size(input_size):
     return input_size
 
 
+def _new_map_size(map_size, kernel_size, padding, stride):
+    map_size_new = ((map_size[0] - kernel_size + 2 * padding) // stride + 1,
+                    (map_size[1] - kernel_size + 2 * padding) // stride + 1)
+    assert (map_size_new[0] - 1) * stride + kernel_size == map_size[0] + 2 * padding
+    assert (map_size_new[1] - 1) * stride + kernel_size == map_size[1] + 2 * padding
+    return map_size_new
+
+
 def inv_softplus(x):
     # copied from original code.
     # I think numerically it's not very stable.
@@ -179,8 +187,7 @@ class CNN(nn.Module):
             stride = conv_this_layer['stride']
             padding = conv_this_layer['padding']
 
-            map_size = ((map_size[0] - kernel_size + 2 * padding) // stride + 1,
-                        (map_size[1] - kernel_size + 2 * padding) // stride + 1)
+            map_size = _new_map_size(map_size, kernel_size, padding, stride)
 
             conv_all.append(
                 (f'conv{idx}', nn.Conv2d(in_channels=in_channels,
@@ -228,10 +235,8 @@ class CNN(nn.Module):
                                                 stride=pool_config['stride'],
                                                 padding=pool_config['padding']))
                 )
-                map_size = ((map_size[0] - pool_config['kernel_size'] + 2
-                             * pool_config['padding']) // pool_config['stride'] + 1,
-                            (map_size[1] - pool_config['kernel_size'] + 2
-                             * pool_config['padding']) // pool_config['stride'] + 1)
+                map_size = _new_map_size(map_size, pool_config['kernel_size'], pool_config['padding'],
+                                         pool_config['stride'])
 
         return nn.Sequential(OrderedDict(conv_all)), map_size
 
