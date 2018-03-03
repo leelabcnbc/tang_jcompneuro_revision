@@ -44,7 +44,8 @@ def do_inner(arch_config, datasets, f_out: h5py.File, opt_configs_to_test, key_p
 
         if key_this not in f_out:
 
-            model = CNN(arch_config, init_config_to_use_fn(), mean_response=datasets[1].mean(axis=0))
+            model = CNN(arch_config, init_config_to_use_fn(), mean_response=datasets[1].mean(axis=0),
+                        seed=0)
             model.cuda()
             t1 = time.time()
             y_test_hat, new_cc = train_one_case(model, datasets, opt_config, seed=0, show_every=10000000)
