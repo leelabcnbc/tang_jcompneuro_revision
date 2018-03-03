@@ -138,7 +138,7 @@ def _update_lr(optimizer: optim.Optimizer, lr_config):
     return
 
 
-def eval_wrapper(model: nn.Module, dataset: DataLoader, global_config_dict, eval_fn):
+def eval_wrapper(model: nn.Module, dataset: DataLoader, send_to_gpu, eval_fn):
     # some part inspired by https://github.com/pytorch/examples/blob/master/imagenet/main.py
     #
     # collect both output and target
@@ -147,7 +147,7 @@ def eval_wrapper(model: nn.Module, dataset: DataLoader, global_config_dict, eval
     outputs_all = []
     for i_minibatch, (inputs, labels) in enumerate(dataset):
         labels_all.append(labels.cpu().numpy().copy())
-        if global_config_dict['convert_data_to_gpu']:
+        if send_to_gpu:
             inputs = Variable(inputs.cuda())
         else:
             inputs = Variable(inputs)
@@ -158,7 +158,10 @@ def eval_wrapper(model: nn.Module, dataset: DataLoader, global_config_dict, eval
     outputs_all = np.concatenate(outputs_all, 0)
     model.train()
 
-    return eval_fn(outputs_all, labels_all)
+    if eval_fn is not None:
+        return eval_fn(outputs_all, labels_all)
+    else:
+        return outputs_all, labels_all
 
 
 def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
@@ -221,16 +224,18 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                     print(f'{i_epoch}-{i_minibatch}, train loss {loss.data.cpu().numpy()[0]}')
 
             if dataset_val is not None and val_every is not None and i_epoch % val_every == 0:
+                assert eval_fn is not None
                 # then print some data for validation set
-                val_metric = eval_wrapper(model, dataset_val, global_config_dict, eval_fn)
+                val_metric = eval_wrapper(model, dataset_val, global_config_dict['convert_data_to_gpu'], eval_fn)
                 print('val metric\n', val_metric)
                 assert val_metric is not None
             else:
                 val_metric = None
 
             if dataset_test is not None and test_every is not None and i_epoch % test_every == 0:
+                assert eval_fn is not None
                 # then print some data for validation set
-                test_metric = eval_wrapper(model, dataset_test, global_config_dict, eval_fn)
+                test_metric = eval_wrapper(model, dataset_test, global_config_dict['convert_data_to_gpu'], eval_fn)
                 print('test metric\n', test_metric)
 
             if print_flag:
