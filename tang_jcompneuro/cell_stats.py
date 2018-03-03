@@ -39,6 +39,8 @@ def _compute_ccmax_fetch(neural_dataset_key, subset_proper, num_trial):
             neural_response_this_subset_mean = load_neural_dataset(neural_dataset_key, use_mean=True,
                                                                    subset=subset_proper)[:, np.newaxis]
             # then fill in mean value
+            # notice that how you do this will affect ccmax.
+            # filling in mean is just one way to do it.
             all_data = np.where(np.isnan(neural_response_this_subset),
                                 neural_response_this_subset_mean,
                                 neural_response_this_subset)

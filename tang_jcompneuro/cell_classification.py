@@ -203,6 +203,20 @@ def criterion_v3(dataset, permissible_threshold_raw=0.5, ratio=2, statistic='rat
         class_to_consider = ('HO', 'OT')  # this is actually enough for us.
     elif keys_this_criterion == {'HO', 'EB', 'CN', 'CV', 'CRS', 'Other'}:
         class_to_consider = ('HO', 'EB', 'CN', 'CV', 'CRS', 'Other', 'SS', 'Multi', 'OT')
+        # a key for what they mean.
+        # check
+        # https://github.com/leelabcnbc/tang_jcompneuro/blob/master/thesis_plots/
+        #         v1_fitting/comparison_among_cnn_glm_vgg_decomposed_by_fine_subsets.ipynb
+        # HO is higher-order, and OT is orientation.
+        # name_mapping_dict = {
+        #     'CV': 'curvature',
+        #     'CN': 'corner',
+        #     'CRS': 'cross',
+        #     'Other': 'composition',
+        #     'Multi': 'mixed',
+        #     'SS': 'classical',
+        #     'EB': 'end-stopping',
+        # }
     else:
         raise ValueError('invalid set of keys')
 
