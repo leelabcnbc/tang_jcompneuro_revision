@@ -60,3 +60,61 @@ def neuron_to_explore_idx(each_class_count=2):
         overall_dict[subset] = this_dict
 
     return overall_dict
+
+
+def one_layer_models_to_explore():
+    # return a list of different arch configs
+    # to try.
+    #
+    # num channel 3, 6, 9, 12, 15
+    #
+    # batchnorm or not
+    #
+    # vanilla fc (with pooling),
+    # vanilla fc + dropout (with pooling),
+    # or factored layer.
+    #
+    # 9x9 kernel.
+    # I remembered that stride != 1 is always bad. same for dilation.
+    # so maybe just 9x9 kernel and 13x13 kernel.
+    # 9x9 gives 12x12 output.
+    #    then try output
+    #    2x2 pooling (size 8, stride 4) w or w/o dropout
+    #    2x2 pooling (size 6, stride 6) w or w/o dropout
+    #
+    #    4 x 4 pooling (size 6, stride 2) w or w/o dropout
+    #    4 x 4 pooling (size 3, stride 3) w or w/o dropout
+    #
+    #    no pooling. readout. hopefully, things will be similar.
+    #
+    #
+    # 13x13 gives 8x8 output.
+    #    then try
+    #    2x2 pooling (size 4, stride 4) w or w/o dropout
+    #    2x2 pooling (size 6, stride 2) w or w/o dropout
+    #
+    #    4x4 pooling (size 2, stride 2) w or w/o dropout
+    #
+    #    no pooling.
+    #
+    pass
+    # so in total 5 x 2 x (9 + 7) = 160 structures.
+
+
+def two_layer_models_to_explore():
+    # do this after finishing one layer.
+    pass
+
+
+def opt_configs_to_explore():
+    # simple ones.
+    #    L2 all the way, and same
+    # complex ones.
+    #    L2 (no bias) for conv. copy what I got in simple ones.
+    #    L1 (no bias) for fc. try some values and get some reasonable range.
+    #
+    # also, poisson or mse.
+    #    hopefully I don't need to deal with it,
+    #    as I want everything to be as simple as possible.
+    #
+    pass
