@@ -192,10 +192,12 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
         early_stopping_best = None
         early_stopping_wait = None
 
+    early_stopping_break = False
+
     with TemporaryFile() as f_best:
         for i_epoch in range(max_epoch):
 
-            print_flag = i_epoch % show_every == 0
+            print_flag = i_epoch != 0 and i_epoch % show_every == 0
 
             if print_flag:
                 print(f'========starting epoch {i_epoch}==========')
@@ -220,14 +222,15 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                 optimizer.step()
 
                 # then let's do things.
-                if print_flag and loss_every is not None and i_minibatch % loss_every == 0:
+                if print_flag and loss_every is not None and i_minibatch != 0 and i_minibatch % loss_every == 0:
                     print(f'{i_epoch}-{i_minibatch}, train loss {loss.data.cpu().numpy()[0]}')
 
             if dataset_val is not None and val_every is not None and i_epoch % val_every == 0:
                 assert eval_fn is not None
                 # then print some data for validation set
                 val_metric = eval_wrapper(model, dataset_val, global_config_dict['convert_data_to_gpu'], eval_fn)
-                print('val metric\n', val_metric)
+                if print_flag:
+                    print('val metric\n', val_metric)
                 assert val_metric is not None
             else:
                 val_metric = None
@@ -236,7 +239,8 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                 assert eval_fn is not None
                 # then print some data for validation set
                 test_metric = eval_wrapper(model, dataset_test, global_config_dict['convert_data_to_gpu'], eval_fn)
-                print('test metric\n', test_metric)
+                if print_flag:
+                    print('test metric\n', test_metric)
 
             if print_flag:
                 print(f'========done epoch {i_epoch}==========')
@@ -258,8 +262,11 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                         'state_dict': model.state_dict(),
                         'optimizer': optimizer.state_dict(),
                     }, f_best)
+                    f_best.seek(0)
+                    # print('save once')
                 else:
                     early_stopping_wait += 1
+                    # print(f'patience {early_stopping_wait}')
                     if early_stopping_wait >= early_stopping_patience:
                         print(f'early stopping after epoch {i_epoch}')
 
@@ -267,6 +274,14 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                         checkpoint = torch.load(f_best)
                         model.load_state_dict(checkpoint['state_dict'])
                         optimizer.load_state_dict(checkpoint['optimizer'])
-
+                        early_stopping_break = True
                         break
+        # load best if there is one.
+        if early_stopping_config is not None and early_stopping_best != np.inf and not early_stopping_break:
+            # recover.
+            print(f'recover best model')
+            checkpoint = torch.load(f_best)
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+
     model.eval()

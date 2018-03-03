@@ -101,7 +101,7 @@ def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val, train_perce
     if has_val:
         assert val_idx is not None
         check_list = (train_idx, val_idx, test_idx)
-        num_val = int(np.ceil(num_train_val * 0.1))
+        num_val = int(np.ceil(num_train_val * 0.2))
         num_train = num_train_val - num_val
         assert num_val > 0 and val_idx.shape == (num_val,)
         assert num_train > 0 and train_idx.shape == (num_train,)
@@ -164,7 +164,7 @@ def save_one(neural_dataset_key,
     # finally, another shuffle.
     if has_val:
         # use 10% of training for val.
-        train_idx, val_idx = one_shuffle(labels[train_val_idx], 0.1, seed)
+        train_idx, val_idx = one_shuffle(labels[train_val_idx], 0.2, seed)
         train_idx = train_val_idx[train_idx]
         val_idx = train_val_idx[val_idx]
     else:

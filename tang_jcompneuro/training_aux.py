@@ -20,6 +20,7 @@ def _check_dataset_shape(X: np.ndarray, y: np.ndarray):
     if not (X is None and y is None):
         assert isinstance(X, np.ndarray) and isinstance(y, np.ndarray)
         assert X.ndim == 4 and y.ndim == 2
+        # print(X.shape, y.shape)
         assert X.shape[0] == y.shape[0] and X.shape[0] > 0
         return FloatTensor(X), FloatTensor(y)
     else:
@@ -65,11 +66,14 @@ def eval_fn(yhat, y):
     loss = pearsonr(yhat.ravel(), y.ravel())[0]
     if not np.isfinite(loss):
         loss = 0.0
-    return {'corr': loss}
+    mse_loss = np.mean((yhat-y)**2)
+    return {'neg_corr': -loss,
+            'corr': loss,
+            'mse': mse_loss}
 
 
 def train_one_case(model, datasets, opt_config,
-                   seed=None, legacy=False, legacy_epoch=150,
+                   seed=None, legacy=False, legacy_epoch=75,
                    shuffle_train=True):
     assert len(datasets) == 6
     dataset_train, dataset_test, dataset_val = generate_datasets(
@@ -84,7 +88,7 @@ def train_one_case(model, datasets, opt_config,
     optimizer = get_optimizer(model, opt_config['optimizer'])
 
     if legacy:
-        # simply 150 iterations.
+        # simply 75 iterations as before.
         phase1_dict = {
             'max_epoch': legacy_epoch,
             'lr_config': None,
@@ -95,11 +99,12 @@ def train_one_case(model, datasets, opt_config,
         global_config_dict = {
             'convert_data_to_gpu': True,
             'loss_every_iter': 100000,  # don't show.
+            'show_every': 100000, # don't show.
         }
     else:
         # the datasets need to be
         phase1_dict = {
-            'max_epoch': 500 * 200,  # at most 200 * 500 epochs.
+            'max_epoch': 100 * 200,  # at most 200 * 100 minibatches.
             'lr_config': None,
             'early_stopping_config': {'patience': 10},
         }
@@ -108,12 +113,12 @@ def train_one_case(model, datasets, opt_config,
         global_config_dict = {
             'convert_data_to_gpu': True,
             'loss_every_iter': 20,  # show loss every 20 iterations,
-            'val_every': 500,  # 500x128 is about 6000 stimuli.
-            'test_every': 500,
+            'val_every': 100,  # 100x128 is about 12800 stimuli.
+            'test_every': 100,
             # 'output_loss' is what we care actually,
             # such as MSE, or corr, etc.
-            'early_stopping_field': 'corr',
-            'show_every': 500,
+            'early_stopping_field': 'neg_corr',
+            'show_every': 1000,
         }
 
     # then train.

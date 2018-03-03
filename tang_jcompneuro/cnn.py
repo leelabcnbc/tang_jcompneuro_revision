@@ -259,7 +259,7 @@ class CNN(nn.Module):
             b = mean_response
         else:
             raise NotImplementedError
-        assert b.shape == self.factored_fc_2d.bias.size()
+        assert b.shape == self.fc.fc.bias.size()
         assert np.all(np.isfinite(b))
         self.fc.fc.bias.data[...] = torch.Tensor(b)
 
@@ -334,7 +334,6 @@ def get_conv_loss(opt_conv_config, conv_module_list):
     sum_list = []
     for m, s in zip(conv_module_list, opt_conv_config):
         w_this: nn.Parameter = m.weight
-
         if s['l2'] != 0:
             sum_list.append(s['l2'] * 0.5 * torch.sum(w_this ** 2))
         if s['l1'] != 0:

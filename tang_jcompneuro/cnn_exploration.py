@@ -79,7 +79,16 @@ def _generate_all_conv_config_generic(num_channel_list, pooling_dict, kernel_siz
     conv_dict = OrderedDict()
     for num_channel in num_channel_list:
         for pool_name, pool_config in pooling_dict.items():
-            for bn in (True, False):
+            for bn in (
+                    True,  # BN doesn't work. probably because too many same-colored patch,
+                             # creating zero var batches.
+                             # this can lead to numerical instability,
+                             # check
+                             # increasing bn_eps may help. however, that defeats the purpose of BN.
+                           # for details. see
+                           #
+                    False,
+            ):
                 bn_prefix = 'bn' if bn else 'nobn'
                 conv_dict[f'{prefix}c{num_channel}_{bn_prefix}_{pool_name}'] = cnn_arch.generate_one_conv_config(
                     kernel_size, num_channel, bn=bn, pool=pool_config
@@ -140,7 +149,7 @@ def generate_all_conv_config(num_channel_list_list):
     return conv_dict_9
 
 
-def one_layer_models_to_explore(add_old_ones=True):
+def one_layer_models_to_explore():
     num_channel_list = (3, 6, 9, 12, 15)
     num_channel_list_2 = (3, 6, 9)
     fc_dict = generate_all_fc_config()
@@ -155,12 +164,18 @@ def one_layer_models_to_explore(add_old_ones=True):
         if (conv_name.endswith('nopool') and fc_name == 'factored') or \
                 (not conv_name.endswith('nopool') and fc_name != 'factored'):
             all_config_dict[conv_name + '_' + fc_name] = cnn_arch.generate_one_config(
-                [deepcopy(conv_config)], deepcopy(fc_config), 'softplus', True
+                [deepcopy(conv_config)], deepcopy(fc_config),
+                # 'softplus',  # too slow convergence. maybe using BN without can increase convergence much faster.
+                               # maybe that's what NIPS2017 paper does.
+                'relu',      # this has much better convergence.
+                True
             )
-    if add_old_ones:
-        # add the reference old one.
-        assert 'legacy_b12' not in all_config_dict
-        all_config_dict['legacy_b12'] = cnn_arch.legacy_one_layer_generator(12)
+
+    # useless now. as we use relu instead.
+    # if add_old_ones:
+    #     # add the reference old one.
+    #     assert 'legacy_b12' not in all_config_dict
+    #     all_config_dict['legacy_b12'] = cnn_arch.legacy_one_layer_generator(12)
 
     return all_config_dict
 
