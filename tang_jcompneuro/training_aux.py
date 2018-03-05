@@ -19,7 +19,7 @@ def count_params(model: nn.Module):
 def _check_dataset_shape(X: np.ndarray, y: np.ndarray):
     if not (X is None and y is None):
         assert isinstance(X, np.ndarray) and isinstance(y, np.ndarray)
-        assert X.ndim == 4 and y.ndim == 2
+        assert (X.ndim == 4 or X.ndim == 2) and y.ndim == 2
         # print(X.shape, y.shape)
         assert X.shape[0] == y.shape[0] and X.shape[0] > 0
         return FloatTensor(X), FloatTensor(y)
@@ -66,7 +66,7 @@ def eval_fn(yhat, y):
     loss = pearsonr(yhat.ravel(), y.ravel())[0]
     if not np.isfinite(loss):
         loss = 0.0
-    mse_loss = np.mean((yhat-y)**2)
+    mse_loss = np.mean((yhat - y) ** 2)
     return {'neg_corr': -loss,
             'corr': loss,
             'mse': mse_loss}
@@ -99,7 +99,7 @@ def train_one_case(model, datasets, opt_config,
         global_config_dict = {
             'convert_data_to_gpu': True,
             'loss_every_iter': 100000,  # don't show.
-            'show_every': 100000, # don't show.
+            'show_every': 100000,  # don't show.
         }
     else:
         # the datasets need to be

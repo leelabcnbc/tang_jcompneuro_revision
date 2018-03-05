@@ -152,11 +152,15 @@ class CNN(nn.Module):
         # ====== parameter check end   ======
 
         # ====== define conv layers    ======
-        self.conv, map_size = self._generate_conv(arch_config['conv'], bn_eps)
+        if len(arch_config['conv']) > 0:
+            self.conv, map_size = self._generate_conv(arch_config['conv'], bn_eps)
+        else:
+            # for GLM stuff.
+            self.conv, map_size = None, self.input_size
 
         # ====== define fc layer       ======
         self.reshape_conv = not arch_config['fc']['factored']
-        self.fc = self._generate_fc(map_size, arch_config['conv'][-1]['out_channel'],
+        self.fc = self._generate_fc(map_size, arch_config['conv'][-1]['out_channel'] if self.conv is not None else 1,
                                     arch_config['fc'], n)
 
         # ====== define last act fn    ======
@@ -175,7 +179,10 @@ class CNN(nn.Module):
             self.init_bias(mean_response)
 
         # helper for computing loss.
-        self.conv_module_list = [x for x in self.conv.children() if isinstance(x, nn.Conv2d)]
+        if self.conv is not None:
+            self.conv_module_list = [x for x in self.conv.children() if isinstance(x, nn.Conv2d)]
+        else:
+            self.conv_module_list = []
 
     def _generate_conv(self, conv_config, bn_eps):
         map_size = self.input_size
@@ -307,7 +314,10 @@ class CNN(nn.Module):
         pass
 
     def forward(self, input):
-        x = self.conv(input)
+        if self.conv is not None:
+            x = self.conv(input)
+        else:
+            x = input
         if self.reshape_conv:
             x = x.view(x.size(0), -1)
         x = self.fc(x)
@@ -348,14 +358,18 @@ def get_conv_loss(opt_conv_config, conv_module_list):
 
 
 def get_fc_loss(opt_fc_config, fc_module):
+    # print(opt_fc_config)
     sum_list = []
     if isinstance(fc_module, nn.Linear):
         # simple
         w_this: nn.Parameter = fc_module.weight
+        # print(w_this)
         if opt_fc_config['l2'] != 0:
             sum_list.append(opt_fc_config['l2'] * 0.5 * torch.sum(w_this ** 2))
+            # print('L2', sum_list)
         if opt_fc_config['l1'] != 0:
             sum_list.append(opt_fc_config['l1'] * torch.sum(torch.abs(w_this)))
+            # print('L1', sum_list)
     elif isinstance(fc_module, FactoredLinear2D):
         w_this_1: nn.Parameter = fc_module.weight_feature
         w_this_2: nn.Parameter = fc_module.weight_spatial
@@ -373,6 +387,7 @@ def get_fc_loss(opt_fc_config, fc_module):
             sum_list.append(opt_fc_config['l2_bias'] * 0.5 * torch.sum(fc_module.bias ** 2))
         if opt_fc_config['l1_bias'] != 0:
             sum_list.append(opt_fc_config['l1_bias'] * torch.sum(torch.abs(fc_module.bias)))
+    # print(sum_list)
     return sum(sum_list)
 
 
@@ -400,6 +415,11 @@ def get_loss(opt_config: dict, model: CNN = None, strict=True):
         conv_loss = get_conv_loss(opt_config['conv'], model_this.conv_module_list)
         fc_loss = get_fc_loss(opt_config['fc'], model_this.fc.fc)
         output_loss = get_output_loss(yhat, y, opt_config['loss'])
+
+        # print(conv_loss, type(conv_loss))
+        # print(fc_loss, type(fc_loss))
+        # print(output_loss, type(output_loss))
+
         return conv_loss + fc_loss + output_loss
 
     return loss_func_inner
