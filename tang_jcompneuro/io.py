@@ -215,3 +215,27 @@ def load_neural_dataset(neural_dataset_key, use_mean=True, return_positive=False
 
 def get_num_neuron_all_datasets():
     return {dataset: get_neural_dataset_shape(dataset)[-1] for dataset in neural_dataset_dict}
+
+
+def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, percentage=100, seed=0):
+    assert isinstance(with_val, bool)
+    val_part = 'with_val' if with_val else 'without_val'
+    if isinstance(neuron_idx_slice, int):
+        neuron_idx_slice = slice(neuron_idx_slice, neuron_idx_slice + 1)
+    assert isinstance(neuron_idx_slice, slice)
+
+    datafile = os.path.join(dir_dictionary['datasets'], 'split_datasets.hdf5')
+    with h5py.File(datafile, 'r') as f:
+        g_this = f[f'/{dataset_key}/{subset}/{val_part}/{percentage}/{seed}']
+        # load X_train/test/val
+        # load y_train/test/val
+        X_train = g_this['train/X'][...]
+        y_train = g_this['train/y'][:, neuron_idx_slice]
+        X_test = g_this['test/X'][...]
+        y_test = g_this['test/y'][:, neuron_idx_slice]
+
+        X_val = g_this['val/X'][...] if 'val' in g_this else None
+        y_val = g_this['val/y'][:, neuron_idx_slice] if 'val' in g_this else None
+        result = (X_train, y_train, X_test, y_test, X_val, y_val)
+
+    return result

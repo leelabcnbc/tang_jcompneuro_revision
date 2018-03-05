@@ -7,6 +7,12 @@ revision of Tang JCNS paper
 
 ***TBA***
 
+~~~bash
+# install R stuff.
+conda install -c conda-forge r-base=3.4.1 rpy2=2.8.5
+# inside R (run `R`), install glmnet by `install.packages("glmnet")`
+~~~
+
 ### set up symbolic links for private data.
 
 after cloning it, create a symbolic link `tang_data` under

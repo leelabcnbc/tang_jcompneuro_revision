@@ -3,10 +3,37 @@
 from collections import OrderedDict
 from itertools import product
 from copy import deepcopy
+import os.path
+import h5py
 import numpy as np
 from .cell_classification import compute_cell_classification
 from .cell_stats import compute_ccmax
 from .configs import cnn_arch, cnn_init, cnn_opt
+from . import dir_dictionary
+
+
+def load_dataset(dataset_key, neuron_idx, subset):
+    group_to_use = OrderedDict()
+    group_to_use['new'] = f'/{dataset_key}/{subset}/with_val/100/0'
+
+    result = OrderedDict()
+
+    datafile = os.path.join(dir_dictionary['datasets'], 'split_datasets.hdf5')
+    with h5py.File(datafile, 'r') as f:
+        for k, g in group_to_use.items():
+            g_this = f[g]
+            # load X_train/test/val
+            # load y_train/test/val
+            X_train = g_this['train/X'][...]
+            y_train = g_this['train/y'][:, neuron_idx:neuron_idx + 1]
+            X_test = g_this['test/X'][...]
+            y_test = g_this['test/y'][:, neuron_idx:neuron_idx + 1]
+
+            X_val = g_this['val/X'][...] if 'val' in g_this else None
+            y_val = g_this['val/y'][:, neuron_idx:neuron_idx + 1] if 'val' in g_this else None
+            result[k] = (X_train, y_train, X_test, y_test, X_val, y_val)
+
+    return result
 
 
 def neuron_to_explore_idx(each_class_count=2, merged=False):
