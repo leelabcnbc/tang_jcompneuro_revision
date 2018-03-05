@@ -12,6 +12,7 @@ dir_dictionary = {
     'models': os.path.join(result_root, 'models'),
     'analyses': os.path.join(result_root, 'analyses'),
     'plots': os.path.join(result_root, 'plots'),
+    'private_data': os.path.abspath(os.path.join(result_root, '..', 'private_data')),
     'tang_data_root': os.path.abspath(os.path.join(result_root, '..', 'private_data',
                                                    'tang_data', 'data')),
     'shape_params_data': os.path.abspath(os.path.join(result_root, '..', 'private_data',
