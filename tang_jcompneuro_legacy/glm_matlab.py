@@ -48,9 +48,52 @@ save('{file_to_save}', 'predicted_y', 'B', 'FitInfo');
 
 """.strip()
 
+glmnet_lambda_seq_script = """
+s = load('{file_to_save}');
+% then add path; genpath is not needed.
+addpath('{matlab_path}');
+% then call
+[lambda] = glmnet_lambda_sequence(s.X, s.y, s.standardize, s.family, double(s.alpha));
+save('{file_to_save}', 'lambda');
+
+""".strip()
+
 
 # this is helper function. just to return best glmnet_cv cross-correlated model
 # it's the main thing for our neural data fitting.
+def glmnet_lambda_sequence(X, y, **kwargs):
+    assert {'standardize', 'alpha', 'family'} == kwargs.keys()
+
+    assert X.ndim == 2 and y.ndim == 2
+    assert y.shape == (X.shape[0], 1)
+    # print(X.shape, y.shape)
+    # print(X.std(axis=0))
+    # print(y.std(), y.mean())
+    #
+    # print(kwargs)
+
+    with TemporaryDirectory() as dir_name:
+        file_to_save = os.path.join(dir_name, 'input.mat')
+        mat_to_save = {
+            'X': X,
+            'y': y,
+        }
+        mat_to_save.update(kwargs)
+        # save X, y, and all kwargs.
+        savemat(file_to_save, mat_to_save)
+        # savemat('/tmp/hahaha.mat', mat_to_save)
+        script = glmnet_lambda_seq_script.format(file_to_save=file_to_save,
+                                                 matlab_path=__matlab_path)
+        # print(script)
+        check_output([__matlab_bin, '-nosplash', '-nodisplay'], encoding='utf-8',
+                     input=script, stderr=STDOUT)
+        # print(a)
+        lambda_seq = loadmat(file_to_save)['lambda'].ravel()
+    assert lambda_seq.shape == (100,)
+
+    return lambda_seq
+
+
 def glmnet_cv_best_result(X, y, *, debug=False, **kwargs):
     # first create temp file to save results.
     assert {'standardize', 'alpha',
@@ -77,9 +120,8 @@ def glmnet_cv_best_result(X, y, *, debug=False, **kwargs):
         script = demo_script.format(file_to_save=file_to_save,
                                     matlab_path=__matlab_path)
         # print(script)
-        a = check_output([__matlab_bin, '-nosplash', '-nodisplay'], encoding='utf-8',
-                         input=script, stderr=STDOUT)
-        print(a)
+        check_output([__matlab_bin, '-nosplash', '-nodisplay'], encoding='utf-8',
+                     input=script, stderr=STDOUT)
         predicted_y = loadmat(file_to_save)['predicted_y'].ravel()
         if debug:
             mat_return = loadmat(file_to_save)
