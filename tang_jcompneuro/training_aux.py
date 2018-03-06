@@ -1,12 +1,12 @@
 """training should invoke this function"""
 
 import numpy as np
-from scipy.stats import pearsonr
 import torch
 from torch import nn, FloatTensor
 from torch.utils.data import TensorDataset, DataLoader
 from . import training
 from .cnn import get_loss, get_optimizer
+from .eval import eval_fn_cnn_training as eval_fn
 
 
 def count_params(model: nn.Module):
@@ -59,17 +59,17 @@ def generate_datasets(X_train: np.ndarray, y_train: np.ndarray,
     return dataset_train, dataset_test, dataset_val
 
 
-def eval_fn(yhat, y):
-    assert yhat.shape == (yhat.size, 1)
-    assert y.shape == (y.size, 1)
-    assert yhat.shape == y.shape
-    loss = pearsonr(yhat.ravel(), y.ravel())[0]
-    if not np.isfinite(loss):
-        loss = 0.0
-    mse_loss = np.mean((yhat - y) ** 2)
-    return {'neg_corr': -loss,
-            'corr': loss,
-            'mse': mse_loss}
+# def eval_fn(yhat, y):
+#     assert yhat.shape == (yhat.size, 1)
+#     assert y.shape == (y.size, 1)
+#     assert yhat.shape == y.shape
+#     loss = pearsonr(yhat.ravel(), y.ravel())[0]
+#     if not np.isfinite(loss):
+#         loss = 0.0
+#     mse_loss = np.mean((yhat - y) ** 2)
+#     return {'neg_corr': -loss,
+#             'corr': loss,
+#             'mse': mse_loss}
 
 
 def train_one_case(model, datasets, opt_config,
