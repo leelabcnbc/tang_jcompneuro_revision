@@ -46,6 +46,7 @@ def check_glm_fit_result(result, num_feature):
     lambda_list, coeff_list, bias_list = result
     assert isinstance(lambda_list, np.ndarray) and np.all(np.isfinite(lambda_list))
     n_lam = lambda_list.size
+    assert n_lam > 0
     assert lambda_list.shape == (n_lam,)
     assert isinstance(coeff_list, np.ndarray) and np.all(np.isfinite(coeff_list))
     assert coeff_list.shape == (n_lam, num_feature)

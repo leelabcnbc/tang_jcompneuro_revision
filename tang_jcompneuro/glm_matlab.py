@@ -47,7 +47,7 @@ s = load('{file_to_save}');
 % then add path; genpath is not needed.
 addpath('{matlab_path}');
 % then call
-[lambda] = glmnet_lambda_sequence(s.X, s.y, s.standardize, s.family, double(s.alpha));
+[lambda] = glmnet_lambda_sequence(s.X, s.y, s.standardize, s.family, double(s.alpha), s.numlambda);
 save('{file_to_save}', 'lambda');
 
 """.strip()
@@ -55,16 +55,11 @@ save('{file_to_save}', 'lambda');
 
 # this is helper function. just to return best glmnet_cv cross-correlated model
 # it's the main thing for our neural data fitting.
-def glmnet_lambda_sequence(X, y, **kwargs):
+def glmnet_lambda_sequence(X, y, *, nlambda=100, **kwargs):
     assert {'standardize', 'alpha', 'family'} == kwargs.keys()
 
     assert X.ndim == 2 and y.ndim == 2
     assert y.shape == (X.shape[0], 1)
-    # print(X.shape, y.shape)
-    # print(X.std(axis=0))
-    # print(y.std(), y.mean())
-    #
-    # print(kwargs)
 
     with TemporaryDirectory() as dir_name:
         file_to_save = os.path.join(dir_name, 'input.mat')
@@ -73,6 +68,7 @@ def glmnet_lambda_sequence(X, y, **kwargs):
             'y': y,
         }
         mat_to_save.update(kwargs)
+        mat_to_save.update({'numlambda': nlambda})
         # save X, y, and all kwargs.
         savemat(file_to_save, mat_to_save)
         # savemat('/tmp/hahaha.mat', mat_to_save)
@@ -82,23 +78,19 @@ def glmnet_lambda_sequence(X, y, **kwargs):
         check_output([__matlab_bin, '-nosplash', '-nodisplay'], encoding='utf-8',
                      input=script, stderr=STDOUT)
         # print(a)
-        lambda_seq = loadmat(file_to_save)['lambda'].ravel()
-    assert lambda_seq.shape == (100,)
+        # match R glmnet style.
+        lambda_seq = loadmat(file_to_save)['lambda'].ravel()[::-1]
+    assert lambda_seq.shape == (nlambda,)
+    assert np.all(np.isfinite(lambda_seq))
 
     return lambda_seq
 
 
-def glmnet(X, y, **kwargs):
+def _glmnet(X, y, **kwargs):
     # first create temp file to save results.
-    assert {'standardize', 'alpha',
-            'foldid', 'family'} == kwargs.keys()
+    assert {'standardize', 'alpha', 'family'} == kwargs.keys()
     assert X.ndim == 2 and y.ndim == 2
     assert y.shape == (X.shape[0], 1)
-    # print(X.shape, y.shape)
-    # print(X.std(axis=0))
-    # print(y.std(), y.mean())
-    #
-    # print(kwargs)
 
     with TemporaryDirectory() as dir_name:
         file_to_save = os.path.join(dir_name, 'input.mat')
@@ -119,3 +111,13 @@ def glmnet(X, y, **kwargs):
         coeff_matrix, fit_info = result['B'], result['FitInfo']
 
     return coeff_matrix, fit_info
+
+
+def glmnet_interface(X, y, *, alpha, standardize, family):
+    coeff_matrix, fit_info = _glmnet(X, y, alpha=alpha, standardize=standardize, family=family)
+    # the order match R version.
+    coef_seq = coeff_matrix.T[::-1]
+    bias_seq = fit_info['Intercept'][0, 0].ravel()[::-1]
+    lam_seq = fit_info['Lambda'][0, 0].ravel()[::-1]
+
+    return lam_seq, coef_seq, bias_seq

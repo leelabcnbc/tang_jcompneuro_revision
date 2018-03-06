@@ -13,9 +13,9 @@ disp(d_symbolic(1:10));
 close all;
 figure;
 hold on;
-plot(d_numerical(1:10));
-plot(d_symbolic(1:10));
-plot(d_symbolic_2(1:10));
+plot(d_numerical(1:1000));
+plot(d_symbolic(1:1000));
+plot(d_symbolic_2(1:1000));
 legend('numerical', 'symb 1', 'symb 2');
 hold off;
 end
