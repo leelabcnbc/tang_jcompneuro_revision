@@ -52,7 +52,7 @@ def get_q_model_pca_trans(x_flat_all, size_x_linear, max_total_dim):
     pca_feature = min(num_feature - size_x_linear,
                       max_total_dim - size_x_linear,
                       x_flat_all.shape[0])
-
+    assert size_x_linear == 400
     assert pca_feature > 1
     pca_obj = PCA(svd_solver='randomized', n_components=pca_feature,
                   random_state=0)
@@ -60,8 +60,12 @@ def get_q_model_pca_trans(x_flat_all, size_x_linear, max_total_dim):
     pca_obj.fit(pca_sep_input)
 
     def transformer(x):
+        # print(x.shape, 'haha')
+        assert x.ndim == 2 and x.shape[1] > size_x_linear
         pca_sep_input_this = x[:, size_x_linear:]
+        # print(pca_sep_input.std(), 'haha pca_sep_input_this')
         x_to_use = pca_obj.transform(pca_sep_input_this)
+        # print(x_to_use.std(), 'haha x_to_use')
         pca_sep_final_input = np.concatenate([x[:, :size_x_linear],
                                               x_to_use], axis=1)
         return pca_sep_final_input
@@ -138,6 +142,7 @@ class GQMPreprocessor(GLMDataPreprocesser):
 
         x_flat_all, size_x_linear = get_q_model(X_train_no_val_full,
                                                 self.locality)
+        assert size_x_linear == 400
         transformer_q_pca, explaind_var_ratio_q = get_q_model_pca_trans(x_flat_all, size_x_linear,
                                                                         self.max_total_dim)
         mix_trans, _ = remixing_transformer(transformer_q_pca(x_flat_all))
