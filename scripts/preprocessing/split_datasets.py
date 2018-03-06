@@ -16,21 +16,16 @@ import h5py
 from sklearn.model_selection import StratifiedShuffleSplit
 from tang_jcompneuro.io import neural_dataset_dict, load_image_dataset, load_neural_dataset
 from tang_jcompneuro.stimulus_classification import stimulus_label_dict_tang, get_subset_slice
-from tang_jcompneuro import dir_dictionary
+from tang_jcompneuro.data_preprocessing import (train_percentage_list, subset_list, seed_list,
+                                                split_data_file, neural_dataset_to_process,
+                                                split_dataset_name_gen)
 
 
 def main():
-    neural_dataset_to_process = ('MkA_Shape',
-                                 'MkE2_Shape')
-
-    train_percentage_list = (100, 75, 50, 25)
     has_val_list = (
         True,
         False,
     )
-    subset_list = ('all', 'OT')
-    seed_list = range(5)
-    split_data_file = os.path.join(dir_dictionary['datasets'], 'split_datasets.hdf5')
 
     # create the file.
     if not os.path.exists(split_data_file):
@@ -96,7 +91,7 @@ def _output_counter_list(labels, ref_keys=None, return_keys=False):
 def _check_idx_sanity(train_idx, val_idx, test_idx, labels, has_val, train_percentage):
     num_test = int(np.ceil(labels.size * 0.2))
     # np.cell is the one used in sklearn.
-    num_train_val = int(np.ceil(train_percentage/100*(labels.size - num_test)))
+    num_train_val = int(np.ceil(train_percentage / 100 * (labels.size - num_test)))
     assert num_test > 0 and test_idx.shape == (num_test,)
     if has_val:
         assert val_idx is not None
@@ -141,8 +136,7 @@ def save_one(neural_dataset_key,
     assert isinstance(train_percentage, int) and 1 <= train_percentage <= 100
     assert isinstance(seed, int) and seed >= 0
 
-    dataset_name = '/'.join((neural_dataset_key, subset, 'with_val' if has_val else 'without_val',
-                             str(train_percentage), str(seed)))
+    dataset_name = split_dataset_name_gen(neural_dataset_key, subset, has_val, train_percentage, seed)
 
     with h5py.File(data_file, 'r') as f_out:
         if dataset_name in f_out:

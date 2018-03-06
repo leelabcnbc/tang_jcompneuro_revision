@@ -1,4 +1,6 @@
 """helper functions to get convert data for glm fitting"""
+from collections import OrderedDict
+
 import numpy as np
 from sklearn.decomposition import PCA
 
@@ -181,3 +183,11 @@ def generate_transformer_dict(max_total_dim_this):
     }
 
     return transformer_dict
+
+
+def generate_ready_transformer_dict():
+    keys_to_use = ('linear', 'fpower')
+    dict_this = generate_transformer_dict(max_total_dim)
+    return OrderedDict([
+        (k, dict_this[k]) for k in keys_to_use
+    ])
