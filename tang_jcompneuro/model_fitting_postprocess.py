@@ -36,6 +36,24 @@ from .model_fitting import get_num_test_im, get_num_neuron
 import numpy as np
 
 
+def get_model_performance_filename(model_type):
+    return os.path.join(dir_dictionary['analyses'], model_type + '.hdf5')
+
+
+def load_model_performance(neural_dataset_key, subset, percentage, seed, model_type, model_subtype,
+                           load_corr=True, load_y_test_hat=False):
+    result = {}
+    with h5py.File(get_model_performance_filename(model_type), 'r') as f:
+        grp = '/'.join(str(x) for x in (neural_dataset_key, subset, percentage, seed, model_type, model_subtype))
+        grp_this = f[grp]
+        if load_corr:
+            result['corr'] = grp_this['corr'][...]
+        if load_y_test_hat:
+            result['y_test_hat'] = grp_this['y_test_hat'][...]
+
+    return result
+
+
 def _generic_callback(name, obj, env: dict, only_check_key=False):
     if env['stop']:
         return
@@ -104,7 +122,7 @@ def handle_one_folder(model_type, root, files):
     print(key)
     key_str = '/'.join(str(x) for x in key)
 
-    out_file = os.path.join(dir_dictionary['analyses'], model_type + '.hdf5')
+    out_file = get_model_performance_filename(model_type)
     with h5py.File(out_file) as f_out:
         # check if this key exists already.
         if key_str in f_out:
