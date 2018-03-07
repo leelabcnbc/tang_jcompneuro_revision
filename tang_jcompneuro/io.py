@@ -218,6 +218,10 @@ def get_num_neuron_all_datasets():
     return {dataset: get_neural_dataset_shape(dataset)[-1] for dataset in neural_dataset_dict}
 
 
+def get_num_im_all_datasets():
+    return {dataset: get_image_dataset_shape(dataset)[0] for dataset in image_dataset_dict}
+
+
 def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
                        percentage=100, seed=0, last_val=True, suffix=None):
     assert isinstance(with_val, bool)

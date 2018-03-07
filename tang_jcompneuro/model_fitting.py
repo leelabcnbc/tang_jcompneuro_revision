@@ -12,12 +12,23 @@ import numpy as np
 import os.path
 import time
 from . import dir_dictionary
-from .io import get_num_neuron_all_datasets
+from . import io
 from . import data_preprocessing
 from .model_fitting_glm import suffix_fn as suffix_fn_glm, get_trainer as get_trainer_glm
 from .io import load_split_dataset
 from subprocess import run
 from itertools import product
+from .eval import eval_fn_corr_raw
+from functools import partial
+from .stimulus_classification import num_ot_dict
+
+
+def eval_fn_particular_dtype(yhat: np.ndarray, y: np.ndarray, dtype):
+    assert y.dtype == np.float64
+    assert yhat.dtype == dtype
+    y = y.astype(dtype, copy=False)
+    return eval_fn_corr_raw(yhat, y, dtype)
+
 
 validation_dict = {
     'cnn': True,
@@ -42,6 +53,11 @@ split_steps_fn_dict = {
     # 'gabor': lambda x: 25,
 }
 
+eval_fn_dict = {
+    'cnn': partial(eval_fn_particular_dtype, dtype=np.float32),
+    'glm': partial(eval_fn_particular_dtype, dtype=np.float64),
+}
+
 # what portions of datasets to train.
 training_portions_fn_dict = {
     # only train one seed first.
@@ -56,15 +72,34 @@ chunk_dict = {
 
 assert (validation_dict.keys() == suffix_fn_dict.keys() ==
         split_steps_fn_dict.keys() == training_portions_fn_dict.keys() ==
-        switch_val_test_dict.keys() == chunk_dict.keys())
+        switch_val_test_dict.keys() == chunk_dict.keys() == eval_fn_dict.keys())
 
-_cache_vars = {'num_neuron_dict': None}
+_cache_vars = {'num_neuron_dict': None,
+               'num_im_dict': None}
 
 
-def get_num_neuron_dict():
+def get_num_neuron(neural_dataset_key):
     if _cache_vars['num_neuron_dict'] is None:
-        _cache_vars['num_neuron_dict'] = get_num_neuron_all_datasets()
-    return _cache_vars['num_neuron_dict']
+        _cache_vars['num_neuron_dict'] = io.get_num_neuron_all_datasets()
+    return _cache_vars['num_neuron_dict'][neural_dataset_key]
+
+
+def get_num_test_im(neural_dataset_key, subset):
+    # get size of test.
+    # this is just a sanity check.
+    # TODO this //5 is magic number.
+    # but should be true across the whole project.
+
+    if _cache_vars['num_im_dict'] is None:
+        _cache_vars['num_im_dict'] = io.get_num_im_all_datasets()
+    image_key = io.neural_dataset_dict[neural_dataset_key]['image_dataset_key']
+    num_all = _cache_vars['num_im_dict'][image_key]
+    if subset == 'all':
+        return num_all // 5
+    elif subset == 'OT':
+        return num_ot_dict[image_key] // 5
+    else:
+        raise NotImplementedError
 
 
 def get_trainer(model_type, model_subtype):
@@ -125,14 +160,20 @@ def get_data_one_slice(datasets_all, idx_relative):
     return tuple(new_datasets)
 
 
-def train_one_case_generic_save_data(train_result: dict, key_this: str, f_out: h5py.File):
+def train_one_case_generic_save_data(train_result: dict, key_this: str, f_out: h5py.File,
+                                     y_test: np.ndarray, eval_fn):
     assert {'y_test_hat', 'corr'} <= train_result.keys() <= {'y_test_hat', 'corr', 'attrs', 'model'}
     # save
     y_test_hat = train_result['y_test_hat']
+    assert np.all(np.isfinite(y_test_hat))
     assert y_test_hat.ndim == 2 and y_test_hat.shape[1] == 1
+    assert y_test.shape == y_test_hat.shape
     grp_this = f_out.create_group(key_this)
     grp_this.create_dataset('y_test_hat', data=y_test_hat)
     assert np.isscalar(train_result['corr']) and np.isfinite(train_result['corr'])
+
+    assert eval_fn(y_test_hat, y_test) == train_result['corr']
+
     grp_this.create_dataset('corr', data=train_result['corr'])
     print('performance', train_result['corr'])
     if 'attrs' in train_result:
@@ -159,6 +200,8 @@ def train_one_case_generic(model_type, model_subtype, dataset_spec, neuron_spec)
     dir_to_save, file_name_base, key_to_save = file_and_key_to_save(model_type, model_subtype,
                                                                     neural_dataset_key, subset, percentage, seed,
                                                                     neuron_start, neuron_end)
+
+    test_im_size = get_num_test_im(neural_dataset_key, subset)
     neuron_range = slice(neuron_start, neuron_end)
     os.makedirs(dir_to_save, exist_ok=True)
     with h5py.File(os.path.join(dir_to_save, file_name_base)) as f_out:
@@ -178,7 +221,10 @@ def train_one_case_generic(model_type, model_subtype, dataset_spec, neuron_spec)
                 t1 = time.time()
                 datasets_this = get_data_one_slice(datasets_all, neuron_idx_relative)
                 train_result = trainer(datasets_this)
-                train_one_case_generic_save_data(train_result, key_this, f_out)
+
+                y_test = datasets_this[5] if switch_val_test_dict[model_type] else datasets_this[3]
+                assert y_test.shape == (test_im_size, 1)
+                train_one_case_generic_save_data(train_result, key_this, f_out, y_test, eval_fn_dict[model_type])
                 t2 = time.time()
                 print(f'{key_this} @ {t2-t1}sec')
 
@@ -254,7 +300,7 @@ def generate_all_scripts(header, model_type, model_subtype_list):
         ):
             dataset_spec = dataset_spec_encode(neural_dataset_key, subset, percentage, seed)
             # generate chunks to process.
-            neuron_fitting_pairs = get_neuron_fitting_pairs(get_num_neuron_all_datasets()[neural_dataset_key],
+            neuron_fitting_pairs = get_neuron_fitting_pairs(get_num_neuron(neural_dataset_key),
                                                             split_steps_fn_dict[model_type](model_subtype))
 
             # convert every one into specs.
