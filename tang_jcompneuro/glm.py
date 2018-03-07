@@ -139,7 +139,7 @@ family_backend_selector = {
 }
 
 
-def glm_wrapper(datasets, *, backend=None, debug=False, **kwargs):
+def glm_wrapper(datasets, *, backend=None, debug=False, return_detailed=False, **kwargs):
     # lambda is always selected automatically.
     assert {'family'} <= kwargs.keys() <= {'alpha', 'standardize', 'family'}
     default_params = {
@@ -173,5 +173,9 @@ def glm_wrapper(datasets, *, backend=None, debug=False, **kwargs):
     assert np.all(np.isfinite(y_test_predict))
     assert datasets[5].shape == y_test_predict.shape + (1,)
 
-    return y_test_predict, eval_fn_corr_raw(y_test_predict[:, np.newaxis],
-                                            datasets[5], np.float64)
+    if not return_detailed:
+        return y_test_predict, eval_fn_corr_raw(y_test_predict[:, np.newaxis],
+                                                datasets[5], np.float64)
+    else:
+        return y_test_predict, eval_fn_corr_raw(y_test_predict[:, np.newaxis],
+                                                datasets[5], np.float64), result

@@ -112,6 +112,7 @@ def _new_map_size(map_size, kernel_size, padding, stride):
 
 
 def inv_softplus(x):
+    assert np.all(x > 0)
     # copied from original code.
     # I think numerically it's not very stable.
     return np.log(np.exp(x) - 1)

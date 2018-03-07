@@ -1,4 +1,5 @@
 /* this is slower than MATLAB version */
+/* so forget about this route */
 /*==========================================================
  * arrayProduct.c - example in MATLAB External Interfaces
  *
