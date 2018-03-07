@@ -54,7 +54,7 @@ def check_glm_fit_result(result, num_feature):
     assert bias_list.shape == (n_lam,)
 
 
-def _glm_fit_and_select(X_train, y_train, X_val, y_val, backend, **kwargs):
+def _glm_fit_and_select(X_train, y_train, X_val, y_val, backend, debug=False, **kwargs):
     result = glm_fit(X_train, y_train, backend, **kwargs)
     # select the best one.
 
@@ -63,6 +63,12 @@ def _glm_fit_and_select(X_train, y_train, X_val, y_val, backend, **kwargs):
     best_lam = None
     best_coeff = None
     best_bias = None
+
+    if debug:
+        print('train size', X_train.shape, y_train.shape)
+        print('val size', X_val.shape, y_val.shape)
+        corr_every_one = []
+
     for lam, coeff, bias in zip(lam_list, coeff_list, bias_list):
         y_val_predict = glm_predict(X_val, coeff, bias, kwargs['family'])
         score_this = eval_fn_corr_raw(y_val_predict[:, np.newaxis], y_val,
@@ -73,22 +79,67 @@ def _glm_fit_and_select(X_train, y_train, X_val, y_val, backend, **kwargs):
             best_lam = float(lam)
             best_coeff = coeff.copy()
             best_bias = float(bias)
+
+        if debug:
+            corr_every_one.append(score_this)
+
+    if debug:
+        from matplotlib import pyplot as plt
+        plt.close('all')
+        plt.figure()
+        plt.plot(lam_list, corr_every_one)
+        plt.xlabel('lambda')
+        plt.ylabel('corr')
+        plt.show()
+
     assert best_lam is not None and best_coeff is not None and best_bias is not None
     return {
         'lambda': best_lam,
-        'coeff': best_bias,
+        'coeff': best_coeff,
         'bias': best_bias,
         'corr_val': best_result,
     }
 
 
+def _check_dataset_shape(X: np.ndarray, y: np.ndarray, n_feature, nonnegative):
+    assert isinstance(X, np.ndarray) and isinstance(y, np.ndarray)
+    assert X.ndim == 2 and y.ndim == 2
+    # print(X.shape, y.shape)
+    assert X.shape[0] == y.shape[0] and X.shape[0] > 0
+    assert X.shape[1] == n_feature and y.shape[1] == 1
+
+    assert np.all(np.isfinite(X))
+    assert np.all(np.isfinite(y))
+
+    if nonnegative:
+        assert np.all(y >= 0)
+
+
 def glm_wrapper_check_datasets(datasets, family):
     # family is to constrain y.
     # check everything is float64.
-    raise NotImplementedError
+    assert len(datasets) == 6
+    if family in {'poisson', 'softplus'}:
+        nonnegative = True
+    elif family in {'gaussian'}:
+        nonnegative = False
+    else:
+        raise NotImplementedError
+
+    n_feature = datasets[0].shape[1]
+    _check_dataset_shape(datasets[0], datasets[1], n_feature, nonnegative)
+    _check_dataset_shape(datasets[2], datasets[3], n_feature, nonnegative)
+    _check_dataset_shape(datasets[4], datasets[5], n_feature, nonnegative)
 
 
-def glm_wrapper(datasets, *, backend=None, **kwargs):
+family_backend_selector = {
+    'gaussian': ('R', 'MATLAB'),
+    'poisson': ('R', 'MATLAB'),
+    'softplus': ('MATLAB',),
+}
+
+
+def glm_wrapper(datasets, *, backend=None, debug=False, **kwargs):
     # lambda is always selected automatically.
     assert {'family'} <= kwargs.keys() <= {'alpha', 'standardize', 'family'}
     default_params = {
@@ -99,11 +150,6 @@ def glm_wrapper(datasets, *, backend=None, **kwargs):
     params_to_use = default_params
     params_to_use.update(kwargs)
     assert params_to_use.keys() == {'alpha', 'standardize', 'family'}
-    family_backend_selector = {
-        'gaussian': ('R',),
-        'poisson': ('R', 'MATLAB'),
-        'softplus': ('MATLAB',),
-    }
 
     if backend is None:
         backend = family_backend_selector[params_to_use['family']][0]
@@ -115,9 +161,13 @@ def glm_wrapper(datasets, *, backend=None, **kwargs):
 
     # then call glmfit
     result = _glm_fit_and_select(*datasets[:4], backend=backend,
-                                 **params_to_use)
+                                 debug=debug, **params_to_use)
 
     # then get prediction on test set
+    if debug:
+        print('best lambda', result['lambda'])
+        print('test size', datasets[4].shape, datasets[5].shape)
+
     y_test_predict = glm_predict(datasets[4], result['coeff'],
                                  result['bias'], params_to_use['family'])
     assert np.all(np.isfinite(y_test_predict))

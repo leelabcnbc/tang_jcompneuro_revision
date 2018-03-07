@@ -14,6 +14,7 @@ from skimage.transform import downscale_local_mean, rescale
 
 from . import dir_dictionary
 from .stimulus_classification import get_subset_slice
+from .data_preprocessing import split_file_name_gen
 
 _global_io_dict = {
     'image': os.path.join(dir_dictionary['datasets'], 'tang_stimulus.hdf5'),
@@ -217,25 +218,33 @@ def get_num_neuron_all_datasets():
     return {dataset: get_neural_dataset_shape(dataset)[-1] for dataset in neural_dataset_dict}
 
 
-def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, percentage=100, seed=0):
+def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
+                       percentage=100, seed=0, last_val=True, suffix=None):
     assert isinstance(with_val, bool)
     val_part = 'with_val' if with_val else 'without_val'
     if isinstance(neuron_idx_slice, int):
         neuron_idx_slice = slice(neuron_idx_slice, neuron_idx_slice + 1)
     assert isinstance(neuron_idx_slice, slice)
 
-    datafile = os.path.join(dir_dictionary['datasets'], 'split_datasets.hdf5')
-    with h5py.File(datafile, 'r') as f:
-        g_this = f[f'/{dataset_key}/{subset}/{val_part}/{percentage}/{seed}']
+    datafile_x = split_file_name_gen(suffix)
+    datafile_y = split_file_name_gen()
+    # when datafile_x == datafile_y, it's fine.
+    # https://github.com/h5py/h5py/issues/332
+    with h5py.File(datafile_x, 'r') as f_x, h5py.File(datafile_y, 'r') as f_y:
+        g_this_x = f_x[f'/{dataset_key}/{subset}/{val_part}/{percentage}/{seed}']
+        g_this_y = f_y[f'/{dataset_key}/{subset}/{val_part}/{percentage}/{seed}']
         # load X_train/test/val
         # load y_train/test/val
-        X_train = g_this['train/X'][...]
-        y_train = g_this['train/y'][:, neuron_idx_slice]
-        X_test = g_this['test/X'][...]
-        y_test = g_this['test/y'][:, neuron_idx_slice]
+        X_train = g_this_x['train/X'][...]
+        y_train = g_this_y['train/y'][:, neuron_idx_slice]
+        X_test = g_this_x['test/X'][...]
+        y_test = g_this_y['test/y'][:, neuron_idx_slice]
 
-        X_val = g_this['val/X'][...] if 'val' in g_this else None
-        y_val = g_this['val/y'][:, neuron_idx_slice] if 'val' in g_this else None
-        result = (X_train, y_train, X_test, y_test, X_val, y_val)
+        X_val = g_this_x['val/X'][...] if 'val' in g_this_x else None
+        y_val = g_this_y['val/y'][:, neuron_idx_slice] if 'val' in g_this_y else None
+        if last_val:
+            result = (X_train, y_train, X_test, y_test, X_val, y_val)
+        else:
+            result = (X_train, y_train, X_val, y_val, X_test, y_test)
 
     return result
