@@ -153,8 +153,7 @@ def glm_wrapper(datasets, *, backend=None, debug=False, return_detailed=False, *
 
     if backend is None:
         backend = family_backend_selector[params_to_use['family']][0]
-    else:
-        assert backend in family_backend_selector[params_to_use['family']]
+    assert backend in family_backend_selector[params_to_use['family']]
 
     # check datasets
     glm_wrapper_check_datasets(datasets, params_to_use['family'])

@@ -3,7 +3,6 @@
 training.py and training_aux.py are mostly for CNN.
 """
 import os.path
-import stat
 import os
 from shlex import quote
 from collections import OrderedDict
@@ -47,7 +46,7 @@ split_steps_fn_dict = {
 training_portions_fn_dict = {
     # only train one seed first.
     'cnn': lambda x: {'seed_list': range(1)},
-    'glm': lambda x: {},
+    'glm': lambda x: {'seed_list': range(2)},
 }
 
 chunk_dict = {
@@ -135,6 +134,7 @@ def train_one_case_generic_save_data(train_result: dict, key_this: str, f_out: h
     grp_this.create_dataset('y_test_hat', data=y_test_hat)
     assert np.isscalar(train_result['corr']) and np.isfinite(train_result['corr'])
     grp_this.create_dataset('corr', data=train_result['corr'])
+    print('performance', train_result['corr'])
     if 'attrs' in train_result:
         # save attrs
         for k, v in train_result['attrs'].items():
@@ -293,9 +293,9 @@ def run_all_scripts(script_dict, slurm=True):
         file_temp.close()
         print(script_name, 'start')
         if not slurm:
-            os.chmod(file_temp.name, stat.S_IEXEC)
+            os.chmod(file_temp.name, 0o755)
             # then run it.
-            run(file_temp.name)
+            run(file_temp.name, check=True)
         else:
             run(['sbatch', file_temp.name], check=True)
         os.remove(file_temp.name)
