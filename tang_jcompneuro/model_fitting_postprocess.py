@@ -77,7 +77,7 @@ def _generic_callback(name, obj, env: dict, only_check_key=False):
             env['stop'] = True
             # collect a sample
             env['dtype_y_test_hat'] = obj['y_test_hat'].dtype
-            #env['dtype_corr'] = obj['corr'].dtype
+            # env['dtype_corr'] = obj['corr'].dtype
         else:
             assert env['key'] == (neural_dataset_key, subset, percentage,
                                   seed, model_type, model_subtype)
@@ -169,10 +169,13 @@ def handle_one_folder(model_type, root, files):
         print('done!')
 
 
-def handle_one_model_type(model_type):
+def handle_one_model_type(model_type, filter=None):
     model_type_folder = os.path.join(dir_dictionary['models'], model_type)
     for root, dirs, files in os.walk(model_type_folder):
         ok = any([x.lower().endswith('.hdf5') for x in files])
         if ok:
+            root_rel = os.path.relpath(root, os.path.commonpath([root, model_type_folder]))
+            if filter is not None and not filter(root_rel):
+                continue
             handle_one_folder(model_type, root, files)
             # input('hi')
