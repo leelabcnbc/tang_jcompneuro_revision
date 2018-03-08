@@ -59,22 +59,9 @@ def generate_datasets(X_train: np.ndarray, y_train: np.ndarray,
     return dataset_train, dataset_test, dataset_val
 
 
-# def eval_fn(yhat, y):
-#     assert yhat.shape == (yhat.size, 1)
-#     assert y.shape == (y.size, 1)
-#     assert yhat.shape == y.shape
-#     loss = pearsonr(yhat.ravel(), y.ravel())[0]
-#     if not np.isfinite(loss):
-#         loss = 0.0
-#     mse_loss = np.mean((yhat - y) ** 2)
-#     return {'neg_corr': -loss,
-#             'corr': loss,
-#             'mse': mse_loss}
-
-
 def train_one_case(model, datasets, opt_config,
                    seed=None, legacy=False, legacy_epoch=75,
-                   shuffle_train=True, show_every=1000):
+                   shuffle_train=True, show_every=1000, return_val_perf=False):
     assert len(datasets) == 6
     dataset_train, dataset_test, dataset_val = generate_datasets(
         *datasets, per_epoch_train=not legacy, shuffle_train=shuffle_train
@@ -126,9 +113,25 @@ def train_one_case(model, datasets, opt_config,
                    phase_config_dict_list, dataset_val=dataset_val, eval_fn=eval_fn,
                    global_config_dict=global_config_dict, dataset_test=dataset_test)
 
+    return_list = []
+
+    if return_val_perf:
+        yhat_val, y_val = training.eval_wrapper(model, dataset_val, True, None)
+        val_perform = eval_fn(yhat_val, y_val)['corr']
+        assert np.isscalar(val_perform) and np.isfinite(val_perform)
+    else:
+        val_perform = None
+
+    if return_val_perf:
+        return_list.append(val_perform)
+
     # finally, output prediction.
     if dataset_test is not None:
         yhat, y = training.eval_wrapper(model, dataset_test, True, None)
-        return yhat, eval_fn(yhat, y)['corr']
-    else:
+        return_list.append(yhat)
+        return_list.append(eval_fn(yhat, y)['corr'])
+
+    if len(return_list) == 0:
         return None
+    else:
+        return tuple(return_list)

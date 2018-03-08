@@ -61,7 +61,7 @@ eval_fn_dict = {
 # what portions of datasets to train.
 training_portions_fn_dict = {
     # only train one seed first.
-    'cnn': lambda x: {'seed_list': range(1)},
+    'cnn': lambda x: {'seed_list': range(2), 'train_percentage_list': (75, 100)},
     'glm': lambda x: {'seed_list': range(2)},
 }
 
@@ -110,6 +110,9 @@ def get_trainer(model_type, model_subtype):
     # 4. (optional) model. a dict. to create a subgroup called 'model' to store additional things.
     if model_type == 'glm':
         trainer = get_trainer_glm(model_subtype)
+    elif model_type == 'cnn':
+        from .model_fitting_cnn import get_trainer as get_trainer_cnn
+        trainer = get_trainer_cnn(model_subtype)
     else:
         raise NotImplementedError
 
@@ -338,6 +341,8 @@ def run_all_scripts(script_dict, slurm=True):
         file_temp.write(script_content.encode('utf-8'))
         file_temp.close()
         print(script_name, 'start')
+        # print(script_content)
+        # input('haha')
         if not slurm:
             os.chmod(file_temp.name, 0o755)
             # then run it.
