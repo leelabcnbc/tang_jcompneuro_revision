@@ -5,6 +5,7 @@ from itertools import product
 from tempfile import NamedTemporaryFile
 from tang_jcompneuro import dir_dictionary
 from tang_jcompneuro.cnn_exploration import one_layer_models_to_explore, neuron_to_explore_idx
+from sys import argv
 
 template_function = """
 #!/usr/bin/env bash
@@ -22,12 +23,15 @@ template_function = """
 cd {root}
 . ./setup_env_variables.sh
 
-PYTHONUNBUFFERED=1 python scripts/cnn_exploration/single_neuron_mka.py {{arch_name}} {{subset}} {{neuron}} &> {root}/trash/cnn_exp_{{arch_name}}_{{subset}}_{{neuron}}_out
+PYTHONUNBUFFERED=1 python scripts/cnn_exploration/single_neuron_mka.py {{arch_name}} {{subset}} {{neuron}} 2>&1 | tee {root}/trash/cnn_exp_{{arch_name}}_{{subset}}_{{neuron}}_out
 """.strip().format(root=dir_dictionary['root'])
 
 # https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks
 
 if __name__ == '__main__':
+
+    use_slurm = len(argv) == 1
+
     # right now, the "all" results are more important.
     # get all neurons to check.
     neurons_to_check_dict = neuron_to_explore_idx(merged=True)
@@ -45,6 +49,8 @@ if __name__ == '__main__':
         for neuron_idx in neurons_to_expore_this_subset:
             str_to_write_full = template_function.format(neuron=neuron_idx, subset=subset,
                                                          arch_name=arch_name)
+            # if arch_name not in {'k9c3_nobn_k8s4max_vanilla'} or subset != 'all':
+            #     continue
 
             # print(str_to_write_full)
             # input('hi')
@@ -55,6 +61,10 @@ if __name__ == '__main__':
             file_temp = NamedTemporaryFile(delete=False)
             file_temp.write(str_to_write_full.encode('utf-8'))
             file_temp.close()
-            run(['sbatch', file_temp.name], check=True)
             print(arch_name, subset, neuron_idx)
+            if use_slurm:
+                run(['sbatch', file_temp.name], check=True)
+            else:
+                os.chmod(file_temp.name, 0o755)
+                run(file_temp.name, check=True)
             remove(file_temp.name)

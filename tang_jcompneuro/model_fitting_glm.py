@@ -6,9 +6,10 @@ import numpy as np
 from .glm import glm_wrapper
 
 _actfn_to_train = ('linear', 'fpower')
-_family_to_train = ('poisson', 'gaussian',
+_family_to_train = (
+    'poisson', 'gaussian',
                     # I will run this somewhere else.
-                    # 'softplus'
+                    # 'softplus',
                     )
 
 

@@ -77,7 +77,7 @@ def _generic_callback(name, obj, env: dict, only_check_key=False):
             env['stop'] = True
             # collect a sample
             env['dtype_y_test_hat'] = obj['y_test_hat'].dtype
-            env['dtype_corr'] = obj['corr'].dtype
+            #env['dtype_corr'] = obj['corr'].dtype
         else:
             assert env['key'] == (neural_dataset_key, subset, percentage,
                                   seed, model_type, model_subtype)
@@ -89,7 +89,10 @@ def _generic_callback(name, obj, env: dict, only_check_key=False):
             env['y_test_hat'][:, neuron_idx: neuron_idx + 1] = y_test_hat_this
             corr_this = obj['corr'][()]
             assert np.isfinite(corr_this) and np.isscalar(corr_this)
-            assert corr_this.dtype == env['corr'].dtype
+            # not true.
+            # my code can return either float32 or float64
+            # when loss=0.0 (float64), regardless whether it's CNN or GLM.
+            # assert corr_this.dtype == env['corr'].dtype
             assert np.isnan(env['corr'][neuron_idx])
             env['corr'][neuron_idx] = corr_this
 
@@ -140,7 +143,7 @@ def handle_one_folder(model_type, root, files):
             'y_test_hat': np.full((num_test_im, num_neuron), fill_value=np.nan,
                                   dtype=env['dtype_y_test_hat']),
             'corr': np.full((num_neuron,), fill_value=np.nan,
-                            dtype=env['dtype_corr']),
+                            dtype=np.float64),
             'stop': False,
             'key': key,
             'num_neuron': num_neuron,
