@@ -49,7 +49,7 @@ if __name__ == '__main__':
         for neuron_idx in neurons_to_expore_this_subset:
             str_to_write_full = template_function.format(neuron=neuron_idx, subset=subset,
                                                          arch_name=arch_name)
-            # if arch_name not in {'k9c3_nobn_k8s4max_vanilla'} or subset != 'all':
+            # if arch_name not in {'k9c3_nobn_k3s3max_dropout'}:
             #     continue
 
             # print(str_to_write_full)

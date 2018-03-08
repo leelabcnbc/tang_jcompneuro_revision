@@ -143,6 +143,7 @@ def eval_wrapper(model: nn.Module, dataset: DataLoader, send_to_gpu, eval_fn):
     #
     # collect both output and target
     model.eval()
+    assert not model.training
     labels_all = []
     outputs_all = []
     for i_minibatch, (inputs, labels) in enumerate(dataset):
@@ -210,6 +211,9 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
 
             # do the standard thing.
             for i_minibatch, (inputs, labels) in enumerate(dataset):
+                # double check that I'm training properly.
+                # in other words, I'm not doing dropout improperly.
+                assert model.training
                 if global_config_dict['convert_data_to_gpu']:
                     inputs, labels = Variable(inputs.cuda()), Variable(labels.cuda())
                 else:

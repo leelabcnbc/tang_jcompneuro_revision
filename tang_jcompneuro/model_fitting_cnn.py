@@ -66,7 +66,10 @@ def _model_configs_to_explore_1layer():
     based on
     # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
     """
-    num_channel_list = (3, 6, 9, 12, 15)
+    num_channel_list = (
+        1, 2, 3, 4, 5,
+        # 6, 9, 12, 15
+    )
     fc_config = cnn_arch.generate_one_fc_config(False, None)
     pool_config = cnn_arch.generate_one_pool_config(6, 2)
 

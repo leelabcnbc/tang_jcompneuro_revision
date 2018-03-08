@@ -261,12 +261,18 @@ class CNN(nn.Module):
         return nn.Sequential(OrderedDict(module_list))
 
     def init_bias(self, mean_response):
-        if self.act_fn == 'softplus':
-            b = inv_softplus(mean_response)
-        elif self.act_fn == 'relu':
+        # always assume that previous layer has 0 output.
+        if self.final_act is None:
             b = mean_response
         else:
-            raise NotImplementedError
+            raise RuntimeError('should not be here for a regular CNN, which has linear output')
+            # well this controls last layer
+            if self.act_fn == 'softplus':
+                b = inv_softplus(mean_response)
+            elif self.act_fn == 'relu':
+                b = mean_response
+            else:
+                raise NotImplementedError
         assert b.shape == self.fc.fc.bias.size()
         assert np.all(np.isfinite(b))
         self.fc.fc.bias.data[...] = torch.Tensor(b)
