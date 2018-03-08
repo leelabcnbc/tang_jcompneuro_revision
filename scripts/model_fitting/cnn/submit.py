@@ -17,5 +17,5 @@ header = """
 if __name__ == '__main__':
     use_slurm = len(argv) == 1
     script_dict = generate_all_scripts(header, 'cnn', models_to_train.keys())
-    print(script_dict.keys(), len(script_dict))
+    # print(script_dict.keys(), len(script_dict))
     run_all_scripts(script_dict, slurm=use_slurm)
