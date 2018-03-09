@@ -275,6 +275,20 @@ def chunker(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
+def check_training_portions(seed_list, subset_list, neural_dataset_to_process, train_percentage_list):
+    for x in seed_list:
+        assert x in data_preprocessing.seed_list
+    for x in subset_list:
+        assert x in data_preprocessing.subset_list
+    for x in neural_dataset_to_process:
+        assert x in data_preprocessing.neural_dataset_to_process
+    for x in train_percentage_list:
+        assert x in data_preprocessing.train_percentage_list
+
+
+# TODO: check that portions are valid.
+
+
 def generate_all_scripts(header, model_type, model_subtype_list):
     """this is what those _sub files call. they provide header and subtypes.
 
@@ -297,6 +311,8 @@ def generate_all_scripts(header, model_type, model_subtype_list):
         train_percentage_list = training_portions_fn_dict[model_type](model_subtype).get(
             'train_percentage_list', data_preprocessing.train_percentage_list
         )
+
+        check_training_portions(seed_list, subset_list, neural_dataset_to_process, train_percentage_list)
 
         for neural_dataset_key, subset, percentage, seed in product(
                 neural_dataset_to_process, subset_list, train_percentage_list, seed_list
