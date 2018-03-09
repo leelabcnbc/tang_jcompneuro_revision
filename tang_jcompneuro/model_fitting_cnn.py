@@ -67,10 +67,10 @@ def _model_configs_to_explore_1layer():
     # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
     """
     num_channel_list = (
-        # 1, 2, 3, 4, 5,
+        1, 2, 3, 4, 5,
         7, 8,
-        # 10, 11,
-        # 6, 9, 12, 15,
+        10, 11,
+        6, 9, 12, 15,
         18,
     )
     fc_config = cnn_arch.generate_one_fc_config(False, None)

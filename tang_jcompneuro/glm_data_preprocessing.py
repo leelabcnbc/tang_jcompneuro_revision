@@ -61,6 +61,8 @@ def get_q_model_pca_trans(x_flat_all, size_x_linear, max_total_dim):
     pca_sep_input = x_flat_all[:, size_x_linear:]
     pca_obj.fit(pca_sep_input)
 
+    print('preserved quadratic variance:', pca_obj.explained_variance_ratio_.sum())
+
     def transformer(x):
         # print(x.shape, 'haha')
         assert x.ndim == 2 and x.shape[1] > size_x_linear
@@ -170,7 +172,10 @@ class GQMPreprocessor(GLMDataPreprocesser):
 
 
 max_total_dim_debug = 1032  # old values
-max_total_dim = None
+
+# this is 9 channel CNN value (883-1 for bias). Lower than that,
+# I won't get 95% variance for some datasets.
+max_total_dim = 882
 
 
 def generate_transformer_dict(max_total_dim_this):
@@ -186,7 +191,7 @@ def generate_transformer_dict(max_total_dim_this):
 
 
 def generate_ready_transformer_dict():
-    keys_to_use = ('linear', 'fpower')
+    keys_to_use = ('linear', 'fpower', 'gqm.2', 'gqm.4', 'gqm.8')
     dict_this = generate_transformer_dict(max_total_dim)
     return OrderedDict([
         (k, dict_this[k]) for k in keys_to_use
