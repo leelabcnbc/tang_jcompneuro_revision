@@ -5,12 +5,15 @@ from itertools import product
 import numpy as np
 from .glm import glm_wrapper
 
-_actfn_to_train = ('linear', 'fpower')
+_actfn_to_train = (
+    # 'linear', 'fpower',
+    'gqm.2', 'gqm.4', 'gqm.8'
+)
 _family_to_train = (
     'poisson', 'gaussian',
-                    # I will run this somewhere else.
-                    # 'softplus',
-                    )
+    # I will run this somewhere else.
+    # 'softplus',
+)
 
 
 def _decompose_subtype(subtype):
