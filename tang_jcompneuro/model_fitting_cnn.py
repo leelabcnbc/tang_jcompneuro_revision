@@ -4,6 +4,7 @@ from itertools import product
 from collections import OrderedDict
 from copy import deepcopy
 import time
+import json
 
 import numpy as np
 from .configs import cnn_opt, cnn_arch, cnn_init
@@ -90,16 +91,21 @@ def init_config_to_use_fn():
     return cnn_init.legacy_generator()
 
 
-def get_trainer(model_subtype):
+def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
+                show_every=10000000, show_arch_config=False):
     arch_config = models_to_train[model_subtype]
+
+    if show_arch_config:
+        print(model_subtype)
+        print(json.dumps(arch_config, indent=2))
 
     def trainer(datasets):
         # best performance in my experiments.
         from torch.backends import cudnn
-        cudnn.enabled = True
-        cudnn.benchmark = False
+        cudnn.enabled = cudnn_enabled
+        cudnn.benchmark = cudnn_benchmark
         # print(cudnn.enabled, cudnn.benchmark)
-        assert cudnn.enabled and not cudnn.benchmark
+        assert cudnn.enabled == cudnn_enabled and cudnn.benchmark == cudnn_benchmark
 
         best_val = -np.inf
         best_config = None
@@ -111,7 +117,7 @@ def get_trainer(model_subtype):
                         seed=0)
             model.cuda()
             t1 = time.time()
-            y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config, seed=0, show_every=10000000,
+            y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config, seed=0, show_every=show_every,
                                                           return_val_perf=True)
             t2 = time.time()
             print(opt_config_name, y_val_cc, f'{t2-t1} sec')
