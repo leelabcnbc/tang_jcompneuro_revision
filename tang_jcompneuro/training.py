@@ -283,7 +283,7 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
         # load best if there is one.
         if early_stopping_config is not None and early_stopping_best != np.inf and not early_stopping_break:
             # recover.
-            print(f'recover best model')
+            print(f'recover best model after {max_epoch} epochs')
             checkpoint = torch.load(f_best)
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])

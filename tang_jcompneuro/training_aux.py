@@ -61,7 +61,8 @@ def generate_datasets(X_train: np.ndarray, y_train: np.ndarray,
 
 def train_one_case(model, datasets, opt_config,
                    seed=None, legacy=False, legacy_epoch=75,
-                   shuffle_train=True, show_every=1000, return_val_perf=False):
+                   shuffle_train=True, show_every=1000, return_val_perf=False,
+                   max_epoch=20000):
     assert len(datasets) == 6
     dataset_train, dataset_test, dataset_val = generate_datasets(
         *datasets, per_epoch_train=not legacy, shuffle_train=shuffle_train
@@ -91,7 +92,7 @@ def train_one_case(model, datasets, opt_config,
     else:
         # the datasets need to be
         phase1_dict = {
-            'max_epoch': 100 * 200,  # at most 200 * 100 minibatches.
+            'max_epoch': max_epoch,  # at most 200 * 100 minibatches.
             'lr_config': None,
             'early_stopping_config': {'patience': 10},
         }

@@ -19,6 +19,22 @@ from .configs.cnn_opt import sanity_check_opt_config, sanity_check_one_optimizer
 from torch.nn.functional import mse_loss
 
 
+class HalfSquare(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input):
+        return F.relu(input) ** 2
+
+
+class Square(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input):
+        return input ** 2
+
+
 class FactoredLinear2D(nn.Module):
     """
     skeleton copied from implementation of nn.Linear from PyTorch 0.3.1
@@ -227,6 +243,20 @@ class CNN(nn.Module):
                      nn.ReLU()
                      )
                 )
+            elif self.act_fn == 'sq':
+                conv_all.append(
+                    (f'act{idx}',
+                     Square()
+                     )
+                )
+            elif self.act_fn == 'halfsq':
+                conv_all.append(
+                    (f'act{idx}',
+                     HalfSquare()
+                     )
+                )
+            elif self.act_fn is None:
+                pass
             else:
                 # to implement other nonlinearities
                 # such as HalfSquaring, etc.
@@ -238,11 +268,20 @@ class CNN(nn.Module):
             # finally, add pooling.
             pool_config = conv_this_layer['pool']
             if pool_config is not None:
-                conv_all.append(
-                    (f'pool{idx}', nn.MaxPool2d(kernel_size=pool_config['kernel_size'],
-                                                stride=pool_config['stride'],
-                                                padding=pool_config['padding']))
-                )
+                if pool_config['pool_type'] == 'max':
+                    conv_all.append(
+                        (f'pool{idx}', nn.MaxPool2d(kernel_size=pool_config['kernel_size'],
+                                                    stride=pool_config['stride'],
+                                                    padding=pool_config['padding']))
+                    )
+                elif pool_config['pool_type'] == 'avg':
+                    conv_all.append(
+                        (f'pool{idx}', nn.AvgPool2d(kernel_size=pool_config['kernel_size'],
+                                                    stride=pool_config['stride'],
+                                                    padding=pool_config['padding']))
+                    )
+                else:
+                    raise NotImplementedError
                 map_size = _new_map_size(map_size, pool_config['kernel_size'], pool_config['padding'],
                                          pool_config['stride'])
 

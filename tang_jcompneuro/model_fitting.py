@@ -61,8 +61,8 @@ eval_fn_dict = {
 # what portions of datasets to train.
 training_portions_fn_dict = {
     # only train one seed first.
-    'cnn': lambda x: {'seed_list': range(2), 'train_percentage_list': (75, 100)},
-    'glm': lambda x: {'seed_list': range(2), 'train_percentage_list': (75, 100)},
+    'cnn': lambda x: {'seed_list': range(2), 'train_percentage_list': (25, 50)},
+    'glm': lambda x: {'seed_list': range(2), 'train_percentage_list': (25, 50)},
 }
 
 chunk_dict = {

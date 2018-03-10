@@ -68,21 +68,48 @@ def _model_configs_to_explore_1layer():
     # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
     """
     num_channel_list = (
-        1, 2, 3, 4, 5,
-        7, 8,
-        10, 11,
-        6, 9, 12, 15,
+        1, 2,
+        3,
+        # 4, 5,
+        # 7, 8,
+        # 10, 11,
+        6,
+        9,
+        12,
+        15,
         18,
     )
     fc_config = cnn_arch.generate_one_fc_config(False, None)
-    pool_config = cnn_arch.generate_one_pool_config(6, 2)
+    pool_config_max = cnn_arch.generate_one_pool_config(6, 2)
+    pool_config_avg = cnn_arch.generate_one_pool_config(6, 2, pool_type='avg')
+
+    pool_dict = [(None, pool_config_max),
+                 ('avg', pool_config_avg)]
+
+    channel_detail = 9
 
     result_dict = OrderedDict()
-    for num_channel in num_channel_list:
+    for num_channel, (pool_name, pool_config), act_fn in product(num_channel_list,
+                                                                 pool_dict, ('relu', None, 'halfsq', 'sq')):
+
+        if pool_name is None:
+            name_this = f'b.{num_channel}'
+        else:
+            assert isinstance(pool_name, str)
+            name_this = f'b.{num_channel}_{pool_name}'
+
+        if act_fn is None:
+            name_this = f'{name_this}_linear'
+        elif act_fn != 'relu':
+            name_this = f'{name_this}_{act_fn}'
+
         # b means baseline
-        result_dict[f'b.{num_channel}'] = cnn_arch.generate_one_config(
+        if num_channel != channel_detail and name_this != f'b.{num_channel}':
+            # I won't check it.
+            continue
+        result_dict[name_this] = cnn_arch.generate_one_config(
             [gen_on_conv_config_k9(num_channel, deepcopy(pool_config)),
-             ], deepcopy(fc_config), 'relu', True
+             ], deepcopy(fc_config), act_fn, True
         )
     return result_dict
 
@@ -92,7 +119,8 @@ def init_config_to_use_fn():
 
 
 def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
-                show_every=10000000, show_arch_config=False):
+                show_every=10000000, show_arch_config=False,
+                max_epoch=20000):
     arch_config = models_to_train[model_subtype]
 
     if show_arch_config:
@@ -115,10 +143,13 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
             # train this config
             model = CNN(arch_config, init_config_to_use_fn(), mean_response=datasets[1].mean(axis=0),
                         seed=0)
+            if show_arch_config:
+                print(model)
             model.cuda()
             t1 = time.time()
             y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config, seed=0, show_every=show_every,
-                                                          return_val_perf=True)
+                                                          return_val_perf=True,
+                                                          max_epoch=max_epoch)
             t2 = time.time()
             print(opt_config_name, y_val_cc, f'{t2-t1} sec')
             if y_val_cc > best_val:

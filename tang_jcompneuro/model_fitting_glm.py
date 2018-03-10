@@ -6,13 +6,13 @@ import numpy as np
 from .glm import glm_wrapper
 
 _actfn_to_train = (
-    'linear', 'fpower',
-    'gqm.2',
-    'gqm.4',
-    'gqm.8'
+    # 'linear', 'fpower',
+    # 'gqm.2',
+    # 'gqm.4',
+    'gqm.8',
 )
 _family_to_train = (
-    'poisson',
+    # 'poisson',
     'gaussian',
     # I will run this somewhere else.
     # 'softplus',
