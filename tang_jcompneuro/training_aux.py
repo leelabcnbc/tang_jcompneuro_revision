@@ -92,6 +92,20 @@ def train_one_case(model, datasets, opt_config,
     else:
         # the datasets need to be
         phase1_dict = {
+            # this max epoch is sufficient for our models,
+            # even those that are not ReLU + max (so slow convergence).
+            # check /trash_b9_detailed.zip for training log
+            # of 8 different CNN models on `all` of MkA.
+            # (100% training set).
+            # of the logs, I have found 63776 cases of early stopping
+            # and 40 cases of max epoch hitted.
+            # rarely an issue.
+            #
+            # for sq model, I once encountered too big loss during training
+            # and get inf in parameters (thus training stopped).
+            # I simply rebooted the training and disappeared.
+            #
+
             'max_epoch': max_epoch,  # at most 200 * 100 minibatches.
             'lr_config': None,
             'early_stopping_config': {'patience': 10},
