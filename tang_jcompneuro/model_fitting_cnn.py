@@ -172,4 +172,5 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
 
 
 models_to_train = _model_configs_to_explore_1layer()
+models_to_train_detailed_keys = [x for x in models_to_train if x.startswith('b.9')]
 opt_configs_to_explore = _opt_configs_to_explore_1layer()
