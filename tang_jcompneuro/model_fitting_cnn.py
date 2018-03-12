@@ -90,7 +90,8 @@ def _model_configs_to_explore_1layer():
 
     result_dict = OrderedDict()
     for num_channel, (pool_name, pool_config), act_fn in product(num_channel_list,
-                                                                 pool_dict, ('relu', None, 'halfsq', 'sq')):
+                                                                 pool_dict, ('relu', None, 'halfsq',
+                                                                             'sq', 'abs')):
 
         if pool_name is None:
             name_this = f'b.{num_channel}'
@@ -121,10 +122,18 @@ def init_config_to_use_fn():
 def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                 show_every=10000000, show_arch_config=False,
                 max_epoch=20000):
-    arch_config = models_to_train[model_subtype]
+    if '@' in model_subtype:
+        model_subtype_real, scale_hack = model_subtype.split('@')
+        scale_hack = float(scale_hack)
+        assert scale_hack in {0.05, 0.005}
+    else:
+        model_subtype_real = model_subtype
+        scale_hack = None
+
+    arch_config = models_to_train[model_subtype_real]
 
     if show_arch_config:
-        print(model_subtype)
+        print(model_subtype_real, 'scale hack', scale_hack)
         print(json.dumps(arch_config, indent=2))
 
     def trainer(datasets):
@@ -141,8 +150,23 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
         best_corr = None
         for opt_config_name, opt_config in opt_configs_to_explore.items():
             # train this config
+            # print('seed changed')
+            # print('scale hacked')
             model = CNN(arch_config, init_config_to_use_fn(), mean_response=datasets[1].mean(axis=0),
-                        seed=0)
+                        # change seed if you get unlucky for unstable input...
+                        # this is the case especially for MkE2_Shape.
+                        # i think this was an issue before as well.
+                        # except that pytorch 0.2.0 doesn't report such errors.
+                        # check /inf_debug_script.py
+                        # seed=42,
+                        seed=0,
+                        # last ditch
+                        # for some avg_sq
+                        # scale_hack=0.9,
+                        # for other avg_sq
+                        # as well as other models.
+                        scale_hack=scale_hack
+                        )
             if show_arch_config:
                 print(model)
             model.cuda()

@@ -128,7 +128,7 @@ _type_checker = {
     'pool_type': lambda x: x in {'max', 'avg'},
     'conv': _sanity_check_conv_list_config,
     'fc': _sanity_check_fc_config,
-    'act_fn': lambda x: x in {'relu', 'softplus', None, 'sq', 'halfsq'},
+    'act_fn': lambda x: x in {'relu', 'softplus', None, 'sq', 'halfsq', 'abs'},
     'linear_output': bool,
 }
 

@@ -35,6 +35,14 @@ class Square(nn.Module):
         return input ** 2
 
 
+class Abs(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, input):
+        return torch.abs(input)
+
+
 class FactoredLinear2D(nn.Module):
     """
     skeleton copied from implementation of nn.Linear from PyTorch 0.3.1
@@ -146,7 +154,7 @@ class CNN(nn.Module):
                  n=1,
                  bn_eps=0.001,
                  mean_response=None,
-                 seed=None):
+                 seed=None, scale_hack=None):
         super().__init__()
         # ====== parameter check start ======
 
@@ -190,7 +198,7 @@ class CNN(nn.Module):
                 raise NotImplementedError
         else:
             self.final_act = None
-
+        self.scale_hack = scale_hack
         self.init_weights(init_config)
         if mean_response is not None:
             self.init_bias(mean_response)
@@ -253,6 +261,12 @@ class CNN(nn.Module):
                 conv_all.append(
                     (f'act{idx}',
                      HalfSquare()
+                     )
+                )
+            elif self.act_fn == 'abs':
+                conv_all.append(
+                    (f'act{idx}',
+                     Abs()
                      )
                 )
             elif self.act_fn is None:
@@ -356,6 +370,9 @@ class CNN(nn.Module):
                 else:
                     assert fill_value == 'kaiming_fan_out'
                     nn_init.kaiming_normal(param_value.data, mode='fan_out')
+                if self.scale_hack is not None:
+                    print('hack scale')
+                    param_value.data.mul_(self.scale_hack)
 
         pass
 
