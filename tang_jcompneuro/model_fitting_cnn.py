@@ -165,13 +165,16 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                         # scale_hack=0.9,
                         # for other avg_sq
                         # as well as other models.
-                        scale_hack=scale_hack
+                        scale_hack= scale_hack,
+                        # scale_hack = 0.0
                         )
             if show_arch_config:
                 print(model)
+            # print('change trainer seed')
             model.cuda()
             t1 = time.time()
-            y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config, seed=0, show_every=show_every,
+            y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config,
+                                                          seed=0, show_every=show_every,
                                                           return_val_perf=True,
                                                           max_epoch=max_epoch)
             t2 = time.time()

@@ -72,7 +72,8 @@ training_portions_fn_dict = {
 }
 
 chunk_dict = {
-    'cnn': 5,
+    #'cnn': 5,
+    'cnn': None,
     'glm': None,
 }
 
