@@ -61,19 +61,19 @@ eval_fn_dict = {
 # what portions of datasets to train.
 training_portions_fn_dict = {
     # only train one seed first.
-    'cnn': lambda x: {'seed_list': range(1), 'train_percentage_list': (100,),
-                      'subset_list': ('all',
-                                      # 'OT'
-                                      ),
+    'cnn': lambda x: {'seed_list': range(2),
+                      # 'subset_list': ('all',
+                      #                 'OT'
+                      #                 ),
                       # 'neural_dataset_to_process': ('MkE2_Shape',),
-                      'neural_dataset_to_process': ('MkA_Shape',)
+                      # 'neural_dataset_to_process': ('MkA_Shape',)
                       },
     'glm': lambda x: {'seed_list': range(2), 'train_percentage_list': (25, 50)},
 }
 
 chunk_dict = {
-    #'cnn': 5,
-    'cnn': None,
+    'cnn': 5,
+    # 'cnn': None,
     'glm': None,
 }
 
@@ -295,8 +295,15 @@ def check_training_portions(seed_list, subset_list, neural_dataset_to_process, t
 
 # TODO: check that portions are valid.
 
+def _get_scope_to_try(name, model_type, model_subtype, override):
+    if name in override:
+        return override[name]
+    else:
+        return training_portions_fn_dict[model_type](model_subtype).get(name,
+                                                                        getattr(data_preprocessing, name))
 
-def generate_all_scripts(header, model_type, model_subtype_list):
+
+def generate_all_scripts(header, model_type, model_subtype_list, override=None):
     """this is what those _sub files call. they provide header and subtypes.
 
     it will return a list of scripts.
@@ -306,18 +313,14 @@ def generate_all_scripts(header, model_type, model_subtype_list):
     """
     chunk_option = chunk_dict[model_type]
     script_dict = OrderedDict()
+    if override is None:
+        override = dict()
     for model_subtype in model_subtype_list:
         # generate all datasets
-        seed_list = training_portions_fn_dict[model_type](model_subtype).get('seed_list',
-                                                                             data_preprocessing.seed_list)
-        subset_list = training_portions_fn_dict[model_type](model_subtype).get('subset_list',
-                                                                               data_preprocessing.subset_list)
-        neural_dataset_to_process = training_portions_fn_dict[model_type](model_subtype).get(
-            'neural_dataset_to_process',
-            data_preprocessing.neural_dataset_to_process)
-        train_percentage_list = training_portions_fn_dict[model_type](model_subtype).get(
-            'train_percentage_list', data_preprocessing.train_percentage_list
-        )
+        seed_list = _get_scope_to_try('seed_list', model_type, model_subtype, override)
+        subset_list = _get_scope_to_try('subset_list', model_type, model_subtype, override)
+        neural_dataset_to_process = _get_scope_to_try('neural_dataset_to_process', model_type, model_subtype, override)
+        train_percentage_list = _get_scope_to_try('train_percentage_list', model_type, model_subtype, override)
 
         check_training_portions(seed_list, subset_list, neural_dataset_to_process, train_percentage_list)
 

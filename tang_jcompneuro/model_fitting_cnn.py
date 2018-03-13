@@ -148,6 +148,7 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
         best_config = None
         best_y_test_hat = None
         best_corr = None
+        inf_counter = 0
         for opt_config_name, opt_config in opt_configs_to_explore.items():
             # train this config
             # print('seed changed')
@@ -165,7 +166,7 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                         # scale_hack=0.9,
                         # for other avg_sq
                         # as well as other models.
-                        scale_hack= scale_hack,
+                        scale_hack=scale_hack,
                         # scale_hack = 0.0
                         )
             if show_arch_config:
@@ -173,10 +174,21 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
             # print('change trainer seed')
             model.cuda()
             t1 = time.time()
-            y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config,
-                                                          seed=0, show_every=show_every,
-                                                          return_val_perf=True,
-                                                          max_epoch=max_epoch)
+            try:
+                y_val_cc, y_test_hat, new_cc = train_one_case(model, datasets, opt_config,
+                                                              seed=0, show_every=show_every,
+                                                              return_val_perf=True,
+                                                              max_epoch=max_epoch)
+            except RuntimeError as e:
+                # just zero.
+                if e.args == ('value cannot be converted to type double without overflow: inf',):
+                    y_val_cc = 0.0
+                    new_cc = 0.0
+                    y_test_hat = np.zeros_like(datasets[3], dtype=np.float32)
+                    inf_counter += 1
+                else:
+                    # print('we will not handle it')
+                    raise
             t2 = time.time()
             print(opt_config_name, y_val_cc, f'{t2-t1} sec')
             if y_val_cc > best_val:
@@ -191,7 +203,9 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
             'corr': best_corr,
             'attrs': {
                 'best_val': best_val,
-                'best_config': best_config
+                'best_config': best_config,
+                # use this to check how many such tragedies happen.
+                'inf_counter': inf_counter,
             },
         }
 
