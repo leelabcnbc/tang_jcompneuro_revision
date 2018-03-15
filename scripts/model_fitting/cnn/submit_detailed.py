@@ -18,11 +18,11 @@ if __name__ == '__main__':
     use_slurm = len(argv) == 1
     # script_dict = generate_all_scripts(header, 'cnn', models_to_train.keys())
     script_dict = generate_all_scripts(header, 'cnn',
-                                       # models_to_train_detailed_keys,
-                                       ['b.9_abs', 'b.9_sq', 'b.9_avg_sq',
-                                        'b.9_avg_abs'],
-                                       # [x + '@0.05' for x in models_to_train_detailed_keys] +
-                                       # [x + '@0.005' for x in models_to_train_detailed_keys],
+                                       models_to_train_detailed_keys + 
+                                       # ['b.9_abs', 'b.9_sq', 'b.9_avg_sq',
+                                       #  'b.9_avg_abs'],
+                                       [x + '@0.05' for x in models_to_train_detailed_keys] +
+                                       [x + '@0.005' for x in models_to_train_detailed_keys],
                                        override={
                                            # 'seed_list': range(1),
                                            'train_percentage_list': (100,),

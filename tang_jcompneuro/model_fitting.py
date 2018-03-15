@@ -189,7 +189,7 @@ def train_one_case_generic_save_data(train_result: dict, key_this: str, f_out: h
     if 'attrs' in train_result:
         # save attrs
         for k, v in train_result['attrs'].items():
-            grp_this.attrs['k'] = v
+            grp_this.attrs[k] = v
     if 'model' in train_result:
         grp_this_model = grp_this.create_group('model')
         for k_model, v_model in train_result['model'].items():
