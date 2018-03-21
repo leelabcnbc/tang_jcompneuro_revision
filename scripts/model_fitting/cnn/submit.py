@@ -18,11 +18,12 @@ if __name__ == '__main__':
     use_slurm = len(argv) == 1
     # script_dict = generate_all_scripts(header, 'cnn', models_to_train.keys())
     # script_dict = generate_all_scripts(header, 'cnn', models_to_train_detailed_keys)
-    script_dict = generate_all_scripts(header, 'cnn', ('b.9',
-                                                       # 'b.1', 'b.2', 'b.3', 'b.4', 'b.5',
-                                                       # 'b.6', 'b.7', 'b.8',
-                                                       # 'b.10',
-                                                       # 'b.11', 'b.12', 'b.15', 'b.18'
+    script_dict = generate_all_scripts(header, 'cnn', (
+                                                      'b.9',
+                                                       'b.1', 'b.2', 'b.3', 'b.4', 'b.5',
+                                                       'b.6', 'b.7', 'b.8',
+                                                       'b.10',
+                                                       'b.11', 'b.12', 'b.15', 'b.18'
                                                        ))
     # print(script_dict.keys(), len(script_dict))
     run_all_scripts(script_dict, slurm=use_slurm)

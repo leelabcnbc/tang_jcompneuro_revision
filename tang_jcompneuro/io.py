@@ -223,7 +223,8 @@ def get_num_im_all_datasets():
 
 
 def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
-                       percentage=100, seed=0, last_val=True, suffix=None):
+                       percentage=100, seed=0, last_val=True, suffix=None,
+                       top_dim=None):
     assert isinstance(with_val, bool)
     val_part = 'with_val' if with_val else 'without_val'
     if isinstance(neuron_idx_slice, int):
@@ -246,6 +247,22 @@ def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
 
         X_val = g_this_x['val/X'][...] if 'val' in g_this_x else None
         y_val = g_this_y['val/y'][:, neuron_idx_slice] if 'val' in g_this_y else None
+
+        if top_dim is not None:
+            # extracting top K dims. for disassociating the effect of conv
+            # and thresholding.
+            assert X_train.ndim == 2 and X_train.shape[1] >= top_dim
+            X_train = X_train[:, :top_dim]
+
+            assert X_test.ndim == 2 and X_test.shape[1] >= top_dim
+            X_test = X_test[:, :top_dim]
+
+            # this should be fine, as I will only use this stuff in my CNN experiments,
+            # where I always have the validation set.
+
+            assert X_val.ndim == 2 and X_val.shape[1] >= top_dim
+            X_val = X_val[:, :top_dim]
+
         if last_val:
             result = (X_train, y_train, X_test, y_test, X_val, y_val)
         else:

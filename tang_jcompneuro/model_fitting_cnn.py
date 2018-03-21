@@ -9,7 +9,7 @@ import json
 import numpy as np
 from .configs import cnn_opt, cnn_arch, cnn_init
 from .cnn import CNN
-from .training_aux import train_one_case
+from .training_aux import train_one_case, count_params
 
 
 # sets of opt configs to use.
@@ -112,6 +112,22 @@ def _model_configs_to_explore_1layer():
             [gen_on_conv_config_k9(num_channel, deepcopy(pool_config)),
              ], deepcopy(fc_config), act_fn, True
         )
+    # finally, add MLP stuff
+
+    for k in (4,  # so that we have roughly 144 units.
+              20, 40, 60, 80, 100, 120,
+              145,  # > 95% variance preserved.
+            # check
+              ):
+        name_this = f'mlp.{k}'  # k is dim to keep.
+        # this is because baseline model has 883 parameters.
+        # (k+1)*mlp + mlp + 1 = 883
+        # (k + 2) * mlp = 882
+        mlp_this = 882 // (k + 2)
+        result_dict[name_this] = cnn_arch.generate_one_config(
+            [], cnn_arch.generate_one_fc_config(False, None, mlp_this), 'relu', True
+        )
+
     return result_dict
 
 
@@ -149,6 +165,20 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
         best_y_test_hat = None
         best_corr = None
         inf_counter = 0
+
+        # check input size
+        if 'mlp' not in model_subtype_real:
+            assert datasets[0].ndim == 4 and datasets[0].shape[1:] == (1, 20, 20)
+            input_size = 20
+        else:
+            assert datasets[0].ndim == 2
+            input_size = (datasets[0].shape[1], 1)
+
+        if show_arch_config:
+            # show dataset detail
+            assert len(datasets) == 6
+            print([x.shape for x in datasets])
+
         for opt_config_name, opt_config in opt_configs_to_explore.items():
             # train this config
             # print('seed changed')
@@ -167,10 +197,13 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                         # for other avg_sq
                         # as well as other models.
                         scale_hack=scale_hack,
+                        # for MLP model, use PCAed data.
+                        input_size=input_size,
                         # scale_hack = 0.0
                         )
             if show_arch_config:
                 print(model)
+                print('# of params', count_params(model))
             # print('change trainer seed')
             model.cuda()
             t1 = time.time()
@@ -214,4 +247,5 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
 
 models_to_train = _model_configs_to_explore_1layer()
 models_to_train_detailed_keys = [x for x in models_to_train if x.startswith('b.9')]
+models_to_train_mlp = [x for x in models_to_train if x.startswith('mlp.')]
 opt_configs_to_explore = _opt_configs_to_explore_1layer()

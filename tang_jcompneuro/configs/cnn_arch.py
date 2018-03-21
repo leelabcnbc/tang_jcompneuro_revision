@@ -41,10 +41,11 @@ def generate_one_pool_config(kernel_size, stride=None, padding=0, pool_type='max
     return config
 
 
-def generate_one_fc_config(factored=False, dropout=None):
+def generate_one_fc_config(factored=False, dropout=None, mlp=None):
     config = {
         'factored': factored,
         'dropout': dropout,
+        'mlp': mlp,
     }
     assert _sanity_check_fc_config(config)
     return config
@@ -107,13 +108,16 @@ def _sanity_check_conv_list_config(conv_config_list):
 
 def _sanity_check_fc_config(fc_config):
     assert isinstance(fc_config, dict)
-    assert fc_config.keys() == {'factored', 'dropout'}
+    assert fc_config.keys() == {'factored', 'dropout', 'mlp'}
     assert isinstance(fc_config['factored'], bool)
     if fc_config['factored']:
         assert fc_config['dropout'] is None
+        assert fc_config['mlp'] is None
     else:
         dropout = fc_config['dropout']
         assert dropout is None or isinstance(dropout, float)
+        mlp = fc_config['mlp']
+        assert mlp is None or isinstance(mlp, int)
     return True
 
 

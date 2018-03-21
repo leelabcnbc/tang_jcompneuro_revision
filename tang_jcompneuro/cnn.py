@@ -190,12 +190,7 @@ class CNN(nn.Module):
 
         # ====== define last act fn    ======
         if not arch_config['linear_output']:
-            if self.act_fn == 'softplus':
-                self.final_act = nn.Softplus()
-            elif self.act_fn == 'relu':
-                self.final_act = nn.ReLU()
-            else:
-                raise NotImplementedError
+            self.final_act = self._gen_nonlinearity()
         else:
             self.final_act = None
         self.scale_hack = scale_hack
@@ -208,6 +203,26 @@ class CNN(nn.Module):
             self.conv_module_list = [x for x in self.conv.children() if isinstance(x, nn.Conv2d)]
         else:
             self.conv_module_list = []
+
+    def _gen_nonlinearity(self):
+        assert self.act_fn is not None, 'you should not come here if there is no nonlinearity'
+        if self.act_fn == 'softplus':
+            return nn.Softplus()
+        elif self.act_fn == 'relu':
+            return nn.ReLU()
+        elif self.act_fn == 'sq':
+            return Square()
+        elif self.act_fn == 'halfsq':
+            return HalfSquare()
+        elif self.act_fn == 'abs':
+            return Abs()
+        else:
+            # to implement other nonlinearities
+            # such as HalfSquaring, etc.
+            # check http://pytorch.org/docs/master/_modules/torch/nn/modules/activation.html#Sigmoid
+            # to define a new module.
+            # it's not difficult.
+            raise NotImplementedError
 
     def _generate_conv(self, conv_config, bn_eps):
         map_size = self.input_size
@@ -237,47 +252,14 @@ class CNN(nn.Module):
                     (f'bn{idx}', nn.BatchNorm2d(num_features=conv_this_layer['out_channel'],
                                                 eps=bn_eps, momentum=0.1, affine=True))
                 )
-            if self.act_fn == 'softplus':
+            if self.act_fn is not None:
                 conv_all.append(
                     (f'act{idx}',
                      # this is essentially what `elu` (which is NOT the ELU in standard usage)
                      # means in the original code.
-                     nn.Softplus()
+                     self._gen_nonlinearity()
                      )
                 )
-            elif self.act_fn == 'relu':
-                conv_all.append(
-                    (f'act{idx}',
-                     nn.ReLU()
-                     )
-                )
-            elif self.act_fn == 'sq':
-                conv_all.append(
-                    (f'act{idx}',
-                     Square()
-                     )
-                )
-            elif self.act_fn == 'halfsq':
-                conv_all.append(
-                    (f'act{idx}',
-                     HalfSquare()
-                     )
-                )
-            elif self.act_fn == 'abs':
-                conv_all.append(
-                    (f'act{idx}',
-                     Abs()
-                     )
-                )
-            elif self.act_fn is None:
-                pass
-            else:
-                # to implement other nonlinearities
-                # such as HalfSquaring, etc.
-                # check http://pytorch.org/docs/master/_modules/torch/nn/modules/activation.html#Sigmoid
-                # to define a new module.
-                # it's not difficult.
-                raise NotImplementedError
 
             # finally, add pooling.
             pool_config = conv_this_layer['pool']
@@ -304,10 +286,17 @@ class CNN(nn.Module):
     def _generate_fc(self, map_size, out_channel, fc_config, n):
         module_list = []
         if fc_config['factored']:
+            assert fc_config['mlp'] is None
             module_list.append(('fc', FactoredLinear2D(out_channel,
                                                        map_size, n, bias=True)))
         else:
-            module_list.append(('fc', nn.Linear(map_size[0] * map_size[1] * out_channel, n)))
+            if fc_config['mlp'] is None:
+                module_list.append(('fc', nn.Linear(map_size[0] * map_size[1] * out_channel, n)))
+            else:
+                module_list.append(('mlp', nn.Linear(map_size[0] * map_size[1] * out_channel, fc_config['mlp'])))
+                # should be there.
+                module_list.append(('mlp_act', self._gen_nonlinearity()))
+                module_list.append(('fc', nn.Linear(fc_config['mlp'], n)))
             if fc_config['dropout'] is not None:
                 module_list.append(('dropout', nn.Dropout(p=fc_config['dropout'])))
 
@@ -353,6 +342,10 @@ class CNN(nn.Module):
             # for both
             # also, this param will be intialized by mean params.
             'fc.fc.bias': 0,
+            # for MLP
+            # use conv init as it acts like conv. also, it uses ReLU.
+            'fc.mlp.weight': 'conv_init',
+            'fc.mlp.bias': 0,
         }
 
         # use init_config
@@ -469,10 +462,21 @@ def get_loss(opt_config: dict, model: CNN = None, strict=True):
     assert sanity_check_opt_config(opt_config)
     opt_config = deepcopy(opt_config)
     # we don't need model. but that can be of help.
+
+    has_mlp = False
+
     if strict:
         assert model is not None
+
     if model is not None:
-        assert len(model.conv_module_list) == len(opt_config['conv'])
+        has_mlp = hasattr(model.fc, 'mlp')
+        if has_mlp:
+            assert len(model.conv_module_list) == 0
+        else:
+            assert len(model.conv_module_list) == len(opt_config['conv'])
+
+    if has_mlp:
+        assert len(opt_config['conv']) == 1
 
     def loss_func_inner(yhat, y, model_this: CNN):
         conv_loss = get_conv_loss(opt_config['conv'], model_this.conv_module_list)
@@ -485,4 +489,18 @@ def get_loss(opt_config: dict, model: CNN = None, strict=True):
 
         return conv_loss + fc_loss + output_loss
 
-    return loss_func_inner
+    def loss_func_inner_mlp(yhat, y, model_this: CNN):
+        mlp_loss = get_fc_loss(opt_config['conv'][0], model_this.fc.mlp)
+        fc_loss = get_fc_loss(opt_config['fc'], model_this.fc.fc)
+        output_loss = get_output_loss(yhat, y, opt_config['loss'])
+
+        # print(conv_loss, type(conv_loss))
+        # print(fc_loss, type(fc_loss))
+        # print(output_loss, type(output_loss))
+
+        return mlp_loss + fc_loss + output_loss
+
+    if has_mlp:
+        return loss_func_inner_mlp
+    else:
+        return loss_func_inner

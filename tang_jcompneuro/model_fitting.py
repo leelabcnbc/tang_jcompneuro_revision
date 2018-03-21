@@ -41,9 +41,37 @@ switch_val_test_dict = {
     'glm': True,
 }
 
+
+def cnn_suffix_fn(x):
+    # first strip @ if there is any
+    if 'mlp' in x:
+        return 'linear'
+    else:
+        return None
+
+
 suffix_fn_dict = {
-    'cnn': lambda x: None,
+    'cnn': cnn_suffix_fn,
     'glm': lambda x: suffix_fn_glm(x),
+    # 'gabor': lambda x: None
+}
+
+
+def cnn_top_dim_fn(x):
+    # first strip @ if there is any
+    if '@' in x:
+        x = x.split('@')[0]
+    if 'mlp' in x:
+        _, k = x.split('.')
+        assert _ == 'mlp'
+        return int(k)
+    else:
+        return None
+
+
+top_dim_fn_dict = {
+    'cnn': cnn_top_dim_fn,
+    'glm': lambda x: None,
     # 'gabor': lambda x: None
 }
 
@@ -79,7 +107,8 @@ chunk_dict = {
 
 assert (validation_dict.keys() == suffix_fn_dict.keys() ==
         split_steps_fn_dict.keys() == training_portions_fn_dict.keys() ==
-        switch_val_test_dict.keys() == chunk_dict.keys() == eval_fn_dict.keys())
+        switch_val_test_dict.keys() == chunk_dict.keys() == eval_fn_dict.keys() ==
+        top_dim_fn_dict.keys())
 
 _cache_vars = {'num_neuron_dict': None,
                'num_im_dict': None}
@@ -220,7 +249,8 @@ def train_one_case_generic(model_type, model_subtype, dataset_spec, neuron_spec)
         datasets_all = load_split_dataset(neural_dataset_key, subset, validation_dict[model_type],
                                           neuron_range, percentage=percentage,
                                           seed=seed, last_val=not switch_val_test_dict[model_type],
-                                          suffix=suffix_fn_dict[model_type](model_subtype))
+                                          suffix=suffix_fn_dict[model_type](model_subtype),
+                                          top_dim=top_dim_fn_dict[model_type](model_subtype))
         # then training one by one.
         for neuron_idx_relative, neuron_idx_real in enumerate(range(neuron_start, neuron_end)):
             key_this = key_to_save + '/' + str(neuron_idx_real)
