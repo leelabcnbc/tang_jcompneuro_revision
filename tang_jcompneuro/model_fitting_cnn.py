@@ -70,9 +70,9 @@ def _model_configs_to_explore_1layer():
     num_channel_list = (
         1, 2,
         3,
-        # 4, 5,
-        # 7, 8,
-        # 10, 11,
+        4, 5,
+        7, 8,
+        10, 11,
         6,
         9,
         12,
@@ -118,6 +118,7 @@ def _model_configs_to_explore_1layer():
               20, 40, 60, 80, 100, 120,
               145,  # > 95% variance preserved.
             # check
+    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/debug/cnn/cnn_wrapper.ipynb
               ):
         name_this = f'mlp.{k}'  # k is dim to keep.
         # this is because baseline model has 883 parameters.

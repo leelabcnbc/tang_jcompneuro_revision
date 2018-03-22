@@ -2,7 +2,7 @@
 simplified from https://github.com/leelabcnbc/tang-paper-2017/blob/master/tang_2017/cell_classification.py
 """
 import os.path
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import h5py
 import numpy as np
@@ -54,6 +54,92 @@ def compute_cell_classification(neural_dataset_key, version, additional_params=N
             _save_cell_classification(f[key_to_use], dict_all)
 
         return _load_cell_classification(f[key_to_use])
+
+
+subset_decompose_dict = OrderedDict()
+subset_decompose_dict['OT'] = ('SS', 'EB')
+subset_decompose_dict['HO'] = ('CV', 'CN', 'CRS', 'Other', 'Multi')
+name_mapping_dict = {
+    'CV': 'curvature',
+    'CN': 'corner',
+    'CRS': 'cross',
+    'Other': 'composition',
+    'Multi': 'mixed',
+    'SS': 'classical',
+    'EB': 'end-stopping',
+}
+
+
+def _check_parition(master_label, label_counter):
+    assert master_label.shape == label_counter.shape
+    assert master_label.dtype == np.bool_
+    assert label_counter.dtype == np.int64
+    # exactly cover same thing
+    assert np.array_equal(master_label, label_counter.astype(np.bool_))
+    # each one appears exactly once
+    assert np.array_equal(np.unique(label_counter), np.array([0, 1]))
+
+
+def _get_ready_to_use_classification_coarse():
+    class_dict_final = dict()
+    for dataset in ('MkA_Shape', 'MkE2_Shape'):
+        classification_dict_all = compute_cell_classification(dataset, 3)
+        class_dict_this = dict()
+        # print(classification_dict_all.keys())
+        label_counter_sub = None
+        for subset in subset_decompose_dict.keys():
+            label_this = classification_dict_all[subset]
+
+            if label_counter_sub is None:
+                label_counter_sub = np.zeros_like(label_this, dtype=np.int64)
+            assert label_counter_sub.shape == label_this.shape
+            label_counter_sub += label_this.astype(np.int64)
+            class_dict_this[subset] = label_this
+        _check_parition(label_counter_sub.astype(np.bool_), label_counter_sub)
+        class_dict_final[dataset] = class_dict_this
+
+    return class_dict_final
+
+
+def _get_ready_to_use_classification_detailed():
+    # https://github.com/leelabcnbc/tang_jcompneuro/blob/d8e3bb719df89765723a25607baf0d4189162cd6/thesis_plots/v1_fitting/comparison_among_cnn_glm_vgg_decomposed_by_fine_subsets.ipynb
+    class_dict_final = dict()
+    for dataset in ('MkA_Shape', 'MkE2_Shape'):
+        classification_dict_all = compute_cell_classification(dataset, 3)
+        class_dict_this = dict()
+        # print(classification_dict_all.keys())
+        for subset, detailed in subset_decompose_dict.items():
+            # print(subset)
+            class_dict_this_this_subset = OrderedDict()
+            label_master = classification_dict_all[subset]
+
+            # to count occurence of each type of label.
+            label_counter_sub = np.zeros_like(label_master, dtype=np.int64)
+
+            for label_fine in detailed:
+                label_this = classification_dict_all[label_fine]
+                assert label_counter_sub.shape == label_this.shape
+                duplicate_neuron_this = np.flatnonzero(np.logical_and(label_counter_sub > 0, label_this))
+                if duplicate_neuron_this.size > 0:
+                    # print('duplicate', duplicate_neuron_this)  # match
+                    # https://github.com/leelabcnbc/tang-paper-2017/blob/master/population_analysis/noise_correlation_analysis.ipynb
+                    label_this[duplicate_neuron_this] = False  # remove them
+                label_counter_sub += label_this.astype(np.int64)
+                # print(label_this_TO_USE.shape)
+                class_dict_this_this_subset[label_fine] = label_this
+
+            _check_parition(label_master, label_counter_sub)
+
+            class_dict_this[subset] = class_dict_this_this_subset
+        class_dict_final[dataset] = class_dict_this
+    return class_dict_final
+
+
+def get_ready_to_use_classification(coarse=True):
+    if coarse:
+        return _get_ready_to_use_classification_coarse()
+    else:
+        return _get_ready_to_use_classification_detailed()
 
 
 class CellTypeCriterionSingle:
