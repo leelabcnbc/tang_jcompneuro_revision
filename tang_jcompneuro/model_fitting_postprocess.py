@@ -117,9 +117,9 @@ def get_ready_to_use_classification_lazy(coarse):
 def _chunk_neurons_one_level(score, class_dict):
     result = OrderedDict()
     for class_label, class_idx in class_dict.items():
-        assert class_idx.shape == score.shape and class_idx.dtype == np.bool_
+        assert class_idx.shape == score.shape == (score.size,) and class_idx.dtype == np.bool_
         data_this_class = score[class_idx]
-        result[class_label] = {'raw': data_this_class, 'mean': data_this_class}
+        result[class_label] = {'raw': data_this_class, 'mean': data_this_class.mean()}
     return result
 
 
@@ -132,7 +132,7 @@ def chunk_neurons(neural_dataset_key, score, coarse=True):
     # (maybe handle it somewhere else).
     class_dict = get_ready_to_use_classification_lazy(coarse)[neural_dataset_key]
     if coarse:
-        result = _chunk_neurons_one_level(class_dict, score)
+        result = _chunk_neurons_one_level(score, class_dict)
     else:
         result = OrderedDict()
         for class_label, class_dict_inner in class_dict.items():
