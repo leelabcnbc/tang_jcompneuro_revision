@@ -37,6 +37,68 @@ from .model_fitting import get_num_test_im, get_num_neuron
 import numpy as np
 from .cell_stats import compute_ccmax
 from .cell_classification import get_ready_to_use_classification
+from itertools import product
+import pandas as pd
+
+
+def load_data_generic(models_to_examine, *,
+                      datasets_to_check=('MkA_Shape', 'MkE2_Shape'),
+                      subsets_to_check=('all', 'OT'),
+                      load_naive=False,
+                      load_coarse=True,
+                      avoid_dict=None,
+                      percentages_to_load=(100,),
+                      seeds=range(2),
+                      metric='ccnorm_5',
+                      squared=False,
+                      score_col_name='score',
+                      ):
+    """adapted from
+    https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/84b04ec342ff58099c1528d80d8f5775a56c9846/results_ipynb/step_1_rough_exploration/model_performance_comparison.ipynb
+    """
+    if avoid_dict is None:
+        avoid_dict = {
+            'MkE2_Shape': {('glm', 'linear_softplus')}
+        }
+    score_all = []
+    for dataset, subset in product(datasets_to_check, subsets_to_check):
+        print(dataset, subset)
+        avoidance = avoid_dict.get(dataset, set())
+        for xxx in models_to_examine:
+            # print(xxx)
+            use_sub = False
+            use_sub_test = False
+            if len(xxx) == 2:
+                model_type, model_subtype = xxx
+            elif len(xxx) == 3:
+                model_type, model_subtype, use_sub = xxx
+                use_sub_test = False
+            else:
+                assert len(xxx) == 4
+                model_type, model_subtype, use_sub, use_sub_test = xxx
+            if (model_type, model_subtype) in avoidance:
+                continue
+            for percentage in percentages_to_load:
+                score_new_cc = np.asarray(
+                    [load_model_performance(dataset, subset, percentage, s, model_type, model_subtype,
+                                            use_sub=use_sub, use_sub_test=use_sub_test, metric=metric,
+                                            squared=squared)['corr'] for s in seeds]).mean(axis=0)
+
+                score_all.append({
+                    'dataset': dataset,
+                    'subset': subset,
+                    # I use $, which I never use in my naming, simply to make parsing easier.
+                    'model': model_type + '_' + model_subtype + '$' f'{use_sub}/{use_sub_test}',
+                    'percentage': percentage,
+                    score_col_name: score_new_cc.mean() if load_naive else chunk_neurons(dataset, score_new_cc,
+                                                                                  coarse=load_coarse),
+
+                    # later on, I can add neuron subset, etc.
+                })
+    score_all = pd.DataFrame(score_all,
+                             columns=['dataset', 'subset', 'model', 'percentage', score_col_name]).set_index(
+        ['dataset', 'subset', 'model', 'percentage'], verify_integrity=True).sort_index()
+    return score_all
 
 
 def get_model_performance_filename(model_type):
