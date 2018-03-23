@@ -13,7 +13,8 @@ def sanity_check_arch_config(config):
     return type_check_wrapper(config, _type_checker, {'fc', 'conv', 'act_fn', 'linear_output'})
 
 
-def generate_one_conv_config(kernel_size, out_channel, stride=1, bn=False, padding=0, pool=None):
+def generate_one_conv_config(kernel_size, out_channel, stride=1, bn=False, padding=0, pool=None,
+                             dilation=1):
     config = {
         'kernel_size': kernel_size,
         'out_channel': out_channel,
@@ -21,6 +22,7 @@ def generate_one_conv_config(kernel_size, out_channel, stride=1, bn=False, paddi
         'bn': bn,
         'padding': padding,
         'pool': pool,
+        'dilation': dilation,
     }
 
     assert _sanity_check_conv_list_config([config])
@@ -102,6 +104,7 @@ def _sanity_check_conv_list_config(conv_config_list):
             'stride', 'bn',
             'padding',
             'pool',
+            'dilation'
         })
     return True
 
@@ -134,6 +137,7 @@ _type_checker = {
     'fc': _sanity_check_fc_config,
     'act_fn': lambda x: x in {'relu', 'softplus', None, 'sq', 'halfsq', 'abs'},
     'linear_output': bool,
+    'dilation': int,
 }
 
 # actual arch dict

@@ -7,6 +7,6 @@ if __name__ == '__main__':
                           #           and x.split('/')[0] not in {'b.4','b.5',
                           #                                       'b.7','b.8',
                           #                                       'b.10','b.11'}
-                          # lambda x: x.startswith('b.') and ('_' in x.split('/')[0])
-                          lambda x: x.startswith('mlp.')
+                          # lambda x: not x.startswith('b.8')
+                          # lambda x: x.startswith('mlp.')
                           )

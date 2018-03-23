@@ -132,6 +132,7 @@ def _new_map_size(map_size, kernel_size, padding, stride):
                     (map_size[1] - kernel_size + 2 * padding) // stride + 1)
     assert (map_size_new[0] - 1) * stride + kernel_size == map_size[0] + 2 * padding
     assert (map_size_new[1] - 1) * stride + kernel_size == map_size[1] + 2 * padding
+    # print(map_size_new)
     return map_size_new
 
 
@@ -233,8 +234,10 @@ class CNN(nn.Module):
             in_channels = 1 if idx == 0 else conv_config[idx - 1]['out_channel']
             stride = conv_this_layer['stride']
             padding = conv_this_layer['padding']
+            dilation = conv_this_layer['dilation']
 
-            map_size = _new_map_size(map_size, kernel_size, padding, stride)
+            map_size = _new_map_size(map_size, kernel_size + (dilation-1)*(kernel_size-1),
+                                     padding, stride)
 
             conv_all.append(
                 (f'conv{idx}', nn.Conv2d(in_channels=in_channels,
@@ -242,7 +245,8 @@ class CNN(nn.Module):
                                          kernel_size=kernel_size,
                                          stride=stride,
                                          padding=padding,
-                                         bias=not conv_this_layer['bn']))
+                                         bias=not conv_this_layer['bn'],
+                                         dilation=dilation))
             )
             if conv_this_layer['bn']:
                 conv_all.append(

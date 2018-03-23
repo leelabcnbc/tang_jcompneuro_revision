@@ -21,11 +21,12 @@ if __name__ == '__main__':
     script_dict = generate_all_scripts(header, 'cnn', (
                                                       # 'b.9',
                                                        # 'b.1', 'b.2', 'b.3',
-                                                      'b.4', 'b.5',
+                                                      # 'b.4', 'b.5',
                                                        # 'b.6',
-                                                      'b.7', 'b.8',
-                                                       'b.10',
-                                                       'b.11',
+                                                      # 'b.7',
+                                                      'b.8',
+                                                       # 'b.10',
+                                                       # 'b.11',
                                                       # 'b.12', 'b.15', 'b.18'
                                                        ))
     # print(script_dict.keys(), len(script_dict))

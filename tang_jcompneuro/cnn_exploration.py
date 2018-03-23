@@ -151,6 +151,44 @@ def _generate_all_conv_config_9x9(num_channel_list):
     return conv_dict
 
 
+def _generate_all_2L_conv_config():
+    # either use dilation or not
+
+    # too many parameters. for 9 and 12
+    num_channel_list = (7,
+
+                        # 9,
+                        # 12
+                        )
+
+    l1_kd_pairs = [
+        (4, 2),  # 7x7 effectively, 14x14
+        (5, 2),  # 9x9 effectively, 12x12
+        (5, 1),  # 5x5,  16x16
+        (7, 1),  # 7x7,  14x14
+    ]
+
+    l2_kdp_pairs = [
+        # (5, 1, 2), # too many parameters.
+        (3, 1, 1),
+    ]
+    conv_dict = OrderedDict()
+    # then all using k6s2 setup.
+    for num_channel in num_channel_list:
+        for l1_kd, l2_kdp in product(l1_kd_pairs, l2_kdp_pairs):
+            l1_k, l1_d = l1_kd
+            l2_k, l2_d, l2_p = l2_kdp
+            name_this = f'c{num_channel}_k{l1_k}d{l1_d}_k{l2_k}d{l2_d}p{l2_p}_k6s2max'
+            conv_dict[name_this] = [cnn_arch.generate_one_conv_config(
+                l1_k, num_channel, dilation=l1_d,
+            ), cnn_arch.generate_one_conv_config(
+                l2_k, num_channel, dilation=l2_d, padding=l2_p,
+                pool=cnn_arch.generate_one_pool_config(6, 2)
+            ),
+            ]
+    return conv_dict
+
+
 def _generate_all_conv_config_13x13(num_channel_list):
     # 13x13 gives 8x8 output.
     #    then try
@@ -251,7 +289,20 @@ def one_layer_models_to_explore():
 
 def two_layer_models_to_explore():
     # do this after finishing one layer.
-    pass
+    fc_config = cnn_arch.generate_one_fc_config(False, None)
+    conv_dict = _generate_all_2L_conv_config()
+
+    # then let's generate.
+    all_config_dict = OrderedDict()
+
+    for (conv_name, conv_config) in conv_dict.items():
+        all_config_dict[conv_name] = cnn_arch.generate_one_config(
+            deepcopy(conv_config), deepcopy(fc_config),
+            'relu',  # this has much better convergence.
+            True
+        )
+
+    return all_config_dict
 
 
 def init_config_to_use_fn():

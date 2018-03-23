@@ -1,5 +1,6 @@
 """this handles some basic plotting functions"""
 
+from typing import List, Tuple
 import numpy as np
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
@@ -77,3 +78,17 @@ def show_one_basic(x: np.ndarray, y: np.ndarray, *,
         ax.text(*pearson_loc, 'n={}\nr={:.4f}'.format(x.size, pearson_this), fontsize=fontsize,
                 horizontalalignment='left',
                 verticalalignment='top')
+
+
+def show_perf_vs_size(x_list: List[np.ndarray],
+                      y_list: List[np.ndarray], *,
+                      xlabel: str = None, ylabel: str = None, title: str = None, ax: Axes = None,
+                      xticks=(0, 25, 50, 75, 100),
+                      yticks=(0, 25, 50, 75, 100),
+                      xticklabels=('0', '25', '50', '75', '100'),
+                      yticklabels=('0', '25', '50', '75', '100'),
+                      ):
+    """x being model size, number of parameter, dataset size, etc.
+    y being performance.
+    """
+

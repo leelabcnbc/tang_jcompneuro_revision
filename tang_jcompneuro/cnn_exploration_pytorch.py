@@ -13,7 +13,8 @@ from .training_aux import train_one_case, eval_fn, count_params
 from .cnn_exploration import (init_config_to_use_fn,
                               one_layer_models_to_explore,
                               opt_configs_to_explore,
-                              load_dataset)
+                              load_dataset,
+                              two_layer_models_to_explore)
 
 
 def do_inner(arch_config, datasets_fn, f_out: h5py.File, opt_configs_to_test, key_prefix, note):
@@ -64,6 +65,42 @@ def explore_one_neuron_1L(arch_name, neuron_idx, subset, dataset_key='MkA_Shape'
     opt_configs_to_test = opt_configs_to_explore()
 
     dir_to_save = os.path.join(dir_dictionary['models'], 'cnn_exploration', arch_name, dataset_key, subset)
+    os.makedirs(dir_to_save, exist_ok=True)
+    file_to_save = os.path.join(dir_to_save, str(neuron_idx) + '.hdf5')
+    print(file_to_save)
+    with h5py.File(file_to_save) as f_out:
+        cache_dict = {'cache': None}
+
+        def datasets_fn():
+            if cache_dict['cache'] is None:
+                cache_dict['cache'] = load_dataset(dataset_key, neuron_idx, subset)['new']
+            return cache_dict['cache']
+
+        # each loss config.
+        key_prefix = (arch_name, dataset_key, subset, str(neuron_idx))
+        do_inner(arch_config_list[arch_name], datasets_fn,
+                 f_out, opt_configs_to_test, key_prefix, note)
+
+
+def explore_one_neuron_2L(arch_name, neuron_idx, subset, dataset_key='MkA_Shape'):
+    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/76cb8d906ee3625eed9894d2b3317678291a4470/results_ipynb/single_neuron_exploration/debug/neuron_553.ipynb
+    #
+    #
+    # stored in /results/models/cnn_exploration/arch_name/dataset_key/neuron_idx.hdf5
+    # will try out all subsets and opt configs.
+    #
+    # fetch card info.
+    # https://stackoverflow.com/a/48152675/3692822
+    # https://stackoverflow.com/questions/48152674/how-to-check-if-pytorch-is-using-the-gpu/48152675
+    #
+
+    note = torch.cuda.get_device_name(torch.cuda.current_device())
+
+    arch_config_list = two_layer_models_to_explore()
+    assert arch_name in arch_config_list
+    opt_configs_to_test = opt_configs_to_explore()
+
+    dir_to_save = os.path.join(dir_dictionary['models'], 'cnn_exploration_2L', arch_name, dataset_key, subset)
     os.makedirs(dir_to_save, exist_ok=True)
     file_to_save = os.path.join(dir_to_save, str(neuron_idx) + '.hdf5')
     print(file_to_save)
