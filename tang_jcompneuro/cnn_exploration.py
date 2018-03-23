@@ -309,7 +309,7 @@ def init_config_to_use_fn():
     return cnn_init.legacy_generator()
 
 
-def opt_configs_to_explore():
+def opt_configs_to_explore(num_layer=1):
     # simple ones.
     #    L2 all the way, and same
     # complex ones.
@@ -342,8 +342,8 @@ def opt_configs_to_explore():
 
     # generate all conv stuff.
     conv_dict = OrderedDict()
-    conv_dict['1e-3L2'] = [layer_gen(0.001)]
-    conv_dict['1e-4L2'] = [layer_gen(0.0001)]
+    conv_dict['1e-3L2'] = [layer_gen(0.001) for _ in range(num_layer)]
+    conv_dict['1e-4L2'] = [layer_gen(0.0001) for _ in range(num_layer)]
 
     fc_dict = OrderedDict()
     fc_dict['1e-3L2'] = layer_gen(0.001)

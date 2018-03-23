@@ -16,7 +16,7 @@ from .training_aux import train_one_case, count_params
 # based on
 # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
 
-def _opt_configs_to_explore_1layer():
+def _opt_configs_to_explore_1layer(num_layer=1):
     """set of opt configs to use.
     based on
     https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
@@ -27,8 +27,8 @@ def _opt_configs_to_explore_1layer():
 
     # generate all conv stuff.
     conv_dict = OrderedDict()
-    conv_dict['1e-3L2'] = [layer_gen(0.001)]
-    conv_dict['1e-4L2'] = [layer_gen(0.0001)]
+    conv_dict['1e-3L2'] = [layer_gen(0.001) for _ in range(num_layer)]
+    conv_dict['1e-4L2'] = [layer_gen(0.0001) for _ in range(num_layer)]
 
     fc_dict = OrderedDict()
     fc_dict['1e-3L2'] = layer_gen(0.001)
@@ -118,7 +118,7 @@ def _model_configs_to_explore_1layer():
               20, 40, 60, 80, 100, 120,
               145,  # > 95% variance preserved.
             # check
-    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/debug/cnn/cnn_wrapper.ipynb
+            # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/debug/cnn/cnn_wrapper.ipynb
               ):
         name_this = f'mlp.{k}'  # k is dim to keep.
         # this is because baseline model has 883 parameters.
@@ -129,6 +129,64 @@ def _model_configs_to_explore_1layer():
             [], cnn_arch.generate_one_fc_config(False, None, mlp_this), 'relu', True
         )
 
+    return result_dict
+
+
+def _generate_all_2L_conv_config():
+    """same as the one in `cnn_exploration`,
+    except that naming is more convenient.
+    """
+    # either use dilation or not
+
+    # too many parameters. for 9 and 12
+    num_channel_list = (7,
+
+                        # 9,
+                        # 12
+                        )
+
+    l1_kd_pairs = [
+        (4, 2),  # 7x7 effectively, 14x14
+        (5, 2),  # 9x9 effectively, 12x12
+        (5, 1),  # 5x5,  16x16
+        (7, 1),  # 7x7,  14x14
+    ]
+
+    l2_kdp_pairs = [
+        # (5, 1, 2), # too many parameters.
+        (3, 1, 1),
+    ]
+    conv_dict = OrderedDict()
+    # then all using k6s2 setup.
+    for num_channel in num_channel_list:
+        for l1_kd, l2_kdp in product(l1_kd_pairs, l2_kdp_pairs):
+            l1_k, l1_d = l1_kd
+            l2_k, l2_d, l2_p = l2_kdp
+            name_this = f'2l_k{l1_k}d{l1_d}_k{l2_k}d{l2_d}p{l2_p}.{num_channel}'
+            conv_dict[name_this] = [cnn_arch.generate_one_conv_config(
+                l1_k, num_channel, dilation=l1_d,
+            ), cnn_arch.generate_one_conv_config(
+                l2_k, num_channel, dilation=l2_d, padding=l2_p,
+                pool=cnn_arch.generate_one_pool_config(6, 2)
+            ),
+            ]
+    return conv_dict
+
+
+def _model_configs_to_explore_2layer():
+    """set of archs to use.
+    based on
+    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration_2L.ipynb
+    # basically all of them.
+    """
+    fc_config = cnn_arch.generate_one_fc_config(False, None)
+    conv_config_dict = _generate_all_2L_conv_config()
+
+    result_dict = OrderedDict()
+    for name_this, conv_config_this in conv_config_dict.items():
+        result_dict[name_this] = cnn_arch.generate_one_config(
+            conv_config_this, deepcopy(fc_config), 'relu', True
+        )
     return result_dict
 
 
@@ -147,7 +205,13 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
         model_subtype_real = model_subtype
         scale_hack = None
 
-    arch_config = models_to_train[model_subtype_real]
+    if model_subtype_real.startswith('2l_'):
+        opt_configs_to_explore_this = opt_configs_to_explore_2l
+        arch_config = models_to_train_2l[model_subtype_real]
+    else:
+        assert model_subtype_real.startswith('b.') or model_subtype_real.startswith('mlp.')
+        opt_configs_to_explore_this = opt_configs_to_explore
+        arch_config = models_to_train[model_subtype_real]
 
     if show_arch_config:
         print(model_subtype_real, 'scale hack', scale_hack)
@@ -180,7 +244,7 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
             assert len(datasets) == 6
             print([x.shape for x in datasets])
 
-        for opt_config_name, opt_config in opt_configs_to_explore.items():
+        for opt_config_name, opt_config in opt_configs_to_explore_this.items():
             # train this config
             # print('seed changed')
             # print('scale hacked')
@@ -247,6 +311,8 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
 
 
 models_to_train = _model_configs_to_explore_1layer()
+models_to_train_2l = _model_configs_to_explore_2layer()
 models_to_train_detailed_keys = [x for x in models_to_train if x.startswith('b.9')]
 models_to_train_mlp = [x for x in models_to_train if x.startswith('mlp.')]
 opt_configs_to_explore = _opt_configs_to_explore_1layer()
+opt_configs_to_explore_2l = _opt_configs_to_explore_1layer(2)

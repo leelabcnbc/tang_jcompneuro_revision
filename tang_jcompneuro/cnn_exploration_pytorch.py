@@ -98,7 +98,7 @@ def explore_one_neuron_2L(arch_name, neuron_idx, subset, dataset_key='MkA_Shape'
 
     arch_config_list = two_layer_models_to_explore()
     assert arch_name in arch_config_list
-    opt_configs_to_test = opt_configs_to_explore()
+    opt_configs_to_test = opt_configs_to_explore(2)
 
     dir_to_save = os.path.join(dir_dictionary['models'], 'cnn_exploration_2L', arch_name, dataset_key, subset)
     os.makedirs(dir_to_save, exist_ok=True)
