@@ -36,8 +36,9 @@ def show_one_basic(x: np.ndarray, y: np.ndarray, *,
         ax = plt.gca()
 
     assert x.shape == y.shape == (x.size,)
-    assert np.all(x >= 0) and np.all(x <= 1)
-    assert np.all(y >= 0) and np.all(y <= 1)
+    # sometimes can go over 1, for ccnorm_5.
+    assert np.all(x >= 0) and np.all(x <= 1.5)
+    assert np.all(y >= 0) and np.all(y <= 1.5)
 
     ax.scatter(x, y, alpha=alpha, s=s)
     ax.set_xlim(0, 1)
