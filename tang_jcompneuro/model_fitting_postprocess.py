@@ -52,6 +52,7 @@ def load_data_generic(models_to_examine, *,
                       metric='ccnorm_5',
                       squared=False,
                       score_col_name='score',
+                      modelname_alternative=None
                       ):
     """adapted from
     https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/84b04ec342ff58099c1528d80d8f5775a56c9846/results_ipynb/step_1_rough_exploration/model_performance_comparison.ipynb
@@ -78,6 +79,13 @@ def load_data_generic(models_to_examine, *,
                 model_type, model_subtype, use_sub, use_sub_test = xxx
             if (model_type, model_subtype) in avoidance:
                 continue
+
+            if modelname_alternative is None:
+                modelname_this = model_type + '_' + model_subtype + '$' f'{use_sub}/{use_sub_test}'
+            else:
+                # provide an simple way to relabel things.
+                modelname_this = modelname_alternative(model_type, model_subtype, use_sub, use_sub_test)
+
             for percentage in percentages_to_load:
                 score_new_cc = np.asarray(
                     [load_model_performance(dataset, subset, percentage, s, model_type, model_subtype,
@@ -88,10 +96,10 @@ def load_data_generic(models_to_examine, *,
                     'dataset': dataset,
                     'subset': subset,
                     # I use $, which I never use in my naming, simply to make parsing easier.
-                    'model': model_type + '_' + model_subtype + '$' f'{use_sub}/{use_sub_test}',
+                    'model': modelname_this,
                     'percentage': percentage,
                     score_col_name: score_new_cc.mean() if load_naive else chunk_neurons(dataset, score_new_cc,
-                                                                                  coarse=load_coarse),
+                                                                                         coarse=load_coarse),
 
                     # later on, I can add neuron subset, etc.
                 })

@@ -81,14 +81,54 @@ def show_one_basic(x: np.ndarray, y: np.ndarray, *,
 
 
 def show_perf_vs_size(x_list: List[np.ndarray],
-                      y_list: List[np.ndarray], *,
+                      y_list: List[np.ndarray],
+                      label_list: List[str], *,
                       xlabel: str = None, ylabel: str = None, title: str = None, ax: Axes = None,
                       xticks=(0, 25, 50, 75, 100),
-                      yticks=(0, 25, 50, 75, 100),
+                      yticks=(0, 0.5, 1),
+                      xlim=(0, 100),
+                      ylim=(0, 1),
+
                       xticklabels=('0', '25', '50', '75', '100'),
-                      yticklabels=('0', '25', '50', '75', '100'),
+                      yticklabels=('0', '0.5', '1'),
+                      style_list=None,
+                      linewidth=1,
+                      show_legend=True,
+                      vline=None
                       ):
     """x being model size, number of parameter, dataset size, etc.
     y being performance.
     """
 
+    if style_list is None:
+        # should give a default set
+        raise NotImplementedError
+
+    assert len(x_list) == len(y_list) == len(label_list)
+    for idx, (x_this, y_this, label_this) in enumerate(zip(x_list, y_list, label_list)):
+        linestyle, color, marker = style_list[idx]
+        ax.plot(x_this, y_this,
+                linestyle=linestyle, color=color, marker=marker, label=label_this,
+                linewidth=linewidth)
+
+    if vline is not None:
+        # color maybe adjusted later
+        ax.axvline(vline, color='r', linewidth=linewidth)
+
+    # ax.set_xlim(0, 1)
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
+    ax.set_xticks(xticks)
+    ax.set_yticks(yticks)
+    ax.set_xticklabels(xticklabels)
+    ax.set_yticklabels(yticklabels)
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
+
+    if show_legend:
+        ax.legend()
