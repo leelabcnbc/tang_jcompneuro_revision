@@ -10,11 +10,12 @@ from . import type_check_wrapper
 
 def sanity_check_arch_config(config):
     # should have three parts
-    return type_check_wrapper(config, _type_checker, {'fc', 'conv', 'act_fn', 'linear_output'})
+    return type_check_wrapper(config, _type_checker, {'fc', 'conv', 'act_fn', 'linear_output',
+                                                      'conv_last_no_act'})
 
 
 def generate_one_conv_config(kernel_size, out_channel, stride=1, bn=False, padding=0, pool=None,
-                             dilation=1):
+                             dilation=1, bn_affine=True):
     config = {
         'kernel_size': kernel_size,
         'out_channel': out_channel,
@@ -23,6 +24,7 @@ def generate_one_conv_config(kernel_size, out_channel, stride=1, bn=False, paddi
         'padding': padding,
         'pool': pool,
         'dilation': dilation,
+        'bn_affine': bn_affine,
     }
 
     assert _sanity_check_conv_list_config([config])
@@ -43,23 +45,25 @@ def generate_one_pool_config(kernel_size, stride=None, padding=0, pool_type='max
     return config
 
 
-def generate_one_fc_config(factored=False, dropout=None, mlp=None):
+def generate_one_fc_config(factored=False, dropout=None, mlp=None, factored_constraint=None):
     config = {
         'factored': factored,
         'dropout': dropout,
         'mlp': mlp,
+        'factored_constraint': factored_constraint,
     }
     assert _sanity_check_fc_config(config)
     return config
 
 
 # actual generators
-def generate_one_config(conv, fc, act_fn, linear_output):
+def generate_one_config(conv, fc, act_fn, linear_output, conv_last_no_act=False):
     config = dict()
     config['conv'] = conv
     config['fc'] = fc
     config['act_fn'] = act_fn
     config['linear_output'] = linear_output
+    config['conv_last_no_act'] = conv_last_no_act
     assert sanity_check_arch_config(config)
     return config
 
@@ -104,19 +108,22 @@ def _sanity_check_conv_list_config(conv_config_list):
             'stride', 'bn',
             'padding',
             'pool',
-            'dilation'
+            'dilation',
+            'bn_affine',
         })
     return True
 
 
 def _sanity_check_fc_config(fc_config):
     assert isinstance(fc_config, dict)
-    assert fc_config.keys() == {'factored', 'dropout', 'mlp'}
+    assert fc_config.keys() == {'factored', 'dropout', 'mlp', 'factored_constraint'}
     assert isinstance(fc_config['factored'], bool)
     if fc_config['factored']:
         assert fc_config['dropout'] is None
         assert fc_config['mlp'] is None
+        assert fc_config['factored_constraint'] in {None, 'abs'}
     else:
+        assert fc_config['factored_constraint'] is None
         dropout = fc_config['dropout']
         assert dropout is None or isinstance(dropout, float)
         mlp = fc_config['mlp']
@@ -129,6 +136,7 @@ _type_checker = {
     'kernel_size': int,
     'out_channel': int,
     'bn': bool,
+    'bn_affine': bool,
     'stride': int,
     'padding': int,
     'pool': _sanity_pool_checker,
@@ -138,6 +146,7 @@ _type_checker = {
     'act_fn': lambda x: x in {'relu', 'softplus', None, 'sq', 'halfsq', 'abs'},
     'linear_output': bool,
     'dilation': int,
+    'conv_last_no_act': bool,
 }
 
 # actual arch dict

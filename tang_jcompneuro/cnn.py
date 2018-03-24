@@ -155,7 +155,8 @@ class CNN(nn.Module):
                  n=1,
                  bn_eps=0.001,
                  mean_response=None,
-                 seed=None, scale_hack=None):
+                 seed=None, scale_hack=None,
+                 ):
         super().__init__()
         # ====== parameter check start ======
 
@@ -179,7 +180,8 @@ class CNN(nn.Module):
 
         # ====== define conv layers    ======
         if len(arch_config['conv']) > 0:
-            self.conv, map_size = self._generate_conv(arch_config['conv'], bn_eps)
+            self.conv, map_size = self._generate_conv(arch_config['conv'], bn_eps,
+                                                      arch_config['conv_last_no_act'])
         else:
             # for GLM stuff.
             self.conv, map_size = None, self.input_size
@@ -225,7 +227,7 @@ class CNN(nn.Module):
             # it's not difficult.
             raise NotImplementedError
 
-    def _generate_conv(self, conv_config, bn_eps):
+    def _generate_conv(self, conv_config, bn_eps, last_no_act):
         map_size = self.input_size
         conv_all = []
         for idx, conv_this_layer in enumerate(conv_config):
@@ -236,7 +238,7 @@ class CNN(nn.Module):
             padding = conv_this_layer['padding']
             dilation = conv_this_layer['dilation']
 
-            map_size = _new_map_size(map_size, kernel_size + (dilation-1)*(kernel_size-1),
+            map_size = _new_map_size(map_size, kernel_size + (dilation - 1) * (kernel_size - 1),
                                      padding, stride)
 
             conv_all.append(
@@ -254,9 +256,9 @@ class CNN(nn.Module):
                     # for the optimizer, I need to set learning rate for gamma to be 0.
                     # or .weight here.
                     (f'bn{idx}', nn.BatchNorm2d(num_features=conv_this_layer['out_channel'],
-                                                eps=bn_eps, momentum=0.1, affine=True))
+                                                eps=bn_eps, momentum=0.1, affine=conv_this_layer['bn_affine']))
                 )
-            if self.act_fn is not None:
+            if self.act_fn is not None and ((not last_no_act) or idx != len(conv_config) - 1):
                 conv_all.append(
                     (f'act{idx}',
                      # this is essentially what `elu` (which is NOT the ELU in standard usage)
@@ -292,7 +294,9 @@ class CNN(nn.Module):
         if fc_config['factored']:
             assert fc_config['mlp'] is None
             module_list.append(('fc', FactoredLinear2D(out_channel,
-                                                       map_size, n, bias=True)))
+                                                       map_size, n, bias=True,
+                                                       weight_spatial_constraint=fc_config['factored_constraint'],
+                                                       weight_feature_constraint=fc_config['factored_constraint'])))
         else:
             if fc_config['mlp'] is None:
                 module_list.append(('fc', nn.Linear(map_size[0] * map_size[1] * out_channel, n)))
