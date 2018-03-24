@@ -16,7 +16,12 @@ header = """
 
 if __name__ == '__main__':
     use_slurm = len(argv) == 1
-    script_dict = generate_all_scripts(header, 'cnn', models_to_train_bn.keys())
+    script_dict = generate_all_scripts(header, 'cnn', models_to_train_bn.keys(),
+                                       override={
+                                           # 'seed_list': range(1),
+                                           'train_percentage_list': (100,),
+                                       },
+                                       )
     # script_dict = generate_all_scripts(header, 'cnn', models_to_train_detailed_keys)
 
     # print(script_dict.keys(), len(script_dict))
