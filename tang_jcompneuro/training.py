@@ -229,6 +229,10 @@ def train_one_phase(model, loss_func, dataset_train, optimizer: optim.Optimizer,
                 if print_flag and loss_every is not None and i_minibatch != 0 and i_minibatch % loss_every == 0:
                     print(f'{i_epoch}-{i_minibatch}, train loss {loss.data.cpu().numpy()[0]}')
 
+            # show fc weights
+            # turned up when I run `/results_ipynb/debug/cnn/cnn_wrapper_bn.ipynb`.
+            # print(torch.sum(model.fc.fc.weight.data**2))
+
             if dataset_val is not None and val_every is not None and i_epoch % val_every == 0:
                 assert eval_fn is not None
                 # then print some data for validation set

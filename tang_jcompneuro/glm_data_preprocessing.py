@@ -175,6 +175,7 @@ max_total_dim_debug = 1032  # old values
 
 # this is 9 channel CNN value (883-1 for bias). Lower than that,
 # I won't get 95% variance for some datasets.
+# check /results_ipynb/debug/glm_preprocessing_check.ipynb
 max_total_dim = 882
 
 

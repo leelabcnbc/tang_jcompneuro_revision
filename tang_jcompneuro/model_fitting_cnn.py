@@ -56,10 +56,51 @@ def _opt_configs_to_explore_1layer(num_layer=1):
     return result_dict
 
 
-def gen_on_conv_config_k9(num_channel, pool_config):
+def gen_on_conv_config_k9(num_channel, pool_config, bn=False):
     return cnn_arch.generate_one_conv_config(
-        9, num_channel, bn=False, pool=pool_config
+        9, num_channel, bn=bn, pool=pool_config
     )
+
+
+def _model_configs_to_explore_1layer_bn():
+    """set of archs to use.
+    based on
+    # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
+    """
+    num_channel_list = (
+        9,
+    )
+    fc_config = cnn_arch.generate_one_fc_config(False, None)
+    pool_config_max = cnn_arch.generate_one_pool_config(6, 2)
+
+    pool_dict = [(None, pool_config_max), ]
+
+    channel_detail = 9
+
+    result_dict = OrderedDict()
+    for num_channel, (pool_name, pool_config), act_fn in product(num_channel_list,
+                                                                 pool_dict, ('relu',)):
+
+        if pool_name is None:
+            name_this = f'b_bn.{num_channel}'
+        else:
+            assert isinstance(pool_name, str)
+            name_this = f'b_bn.{num_channel}_{pool_name}'
+
+        if act_fn is None:
+            name_this = f'{name_this}_linear'
+        elif act_fn != 'relu':
+            name_this = f'{name_this}_{act_fn}'
+
+        # b means baseline
+        if num_channel != channel_detail and name_this != f'b_bn.{num_channel}':
+            # I won't check it.
+            continue
+        result_dict[name_this] = cnn_arch.generate_one_config(
+            [gen_on_conv_config_k9(num_channel, deepcopy(pool_config), bn=True),
+             ], deepcopy(fc_config), act_fn, True
+        )
+    return result_dict
 
 
 def _model_configs_to_explore_1layer():
@@ -196,7 +237,8 @@ def init_config_to_use_fn():
 
 def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                 show_every=10000000, show_arch_config=False,
-                max_epoch=20000):
+                max_epoch=20000, hack_arch_config_fn=None,
+                catch_inf_error=True):
     if '@' in model_subtype:
         model_subtype_real, scale_hack = model_subtype.split('@')
         scale_hack = float(scale_hack)
@@ -208,10 +250,17 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
     if model_subtype_real.startswith('2l_'):
         opt_configs_to_explore_this = opt_configs_to_explore_2l
         arch_config = models_to_train_2l[model_subtype_real]
+    elif model_subtype_real.startswith('b_bn.'):
+        opt_configs_to_explore_this = opt_configs_to_explore
+        arch_config = models_to_train_bn[model_subtype_real]
     else:
         assert model_subtype_real.startswith('b.') or model_subtype_real.startswith('mlp.')
         opt_configs_to_explore_this = opt_configs_to_explore
         arch_config = models_to_train[model_subtype_real]
+
+    if hack_arch_config_fn is not None:
+        arch_config = hack_arch_config_fn(deepcopy(arch_config))
+        print('arch config hacked!')
 
     if show_arch_config:
         print(model_subtype_real, 'scale hack', scale_hack)
@@ -279,7 +328,7 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
                                                               max_epoch=max_epoch)
             except RuntimeError as e:
                 # just zero.
-                if e.args == ('value cannot be converted to type double without overflow: inf',):
+                if catch_inf_error and e.args == ('value cannot be converted to type double without overflow: inf',):
                     y_val_cc = 0.0
                     new_cc = 0.0
                     y_test_hat = np.zeros_like(datasets[3], dtype=np.float32)
@@ -311,6 +360,7 @@ def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False,
 
 
 models_to_train = _model_configs_to_explore_1layer()
+models_to_train_bn = _model_configs_to_explore_1layer_bn()
 models_to_train_2l = _model_configs_to_explore_2layer()
 models_to_train_detailed_keys = [x for x in models_to_train if x.startswith('b.9')]
 models_to_train_mlp = [x for x in models_to_train if x.startswith('mlp.')]

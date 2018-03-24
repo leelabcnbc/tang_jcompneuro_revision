@@ -234,7 +234,7 @@ def one_layer_models_to_explore():
                 (not conv_name.endswith('nopool') and fc_name != 'factored'):
             all_config_dict[conv_name + '_' + fc_name] = cnn_arch.generate_one_config(
                 [deepcopy(conv_config)], deepcopy(fc_config),
-                # 'softplus',  # too slow convergence. maybe using BN without can increase convergence much faster.
+                # 'softplus',  # too slow convergence. maybe using with BN can increase convergence much faster.
                 # maybe that's what NIPS2017 paper does.
                 'relu',  # this has much better convergence.
                 True
