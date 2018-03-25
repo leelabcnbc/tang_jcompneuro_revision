@@ -43,10 +43,10 @@ def _compute_cell_classification_inner(neural_dataset_key, version, additional_p
 
 
 # you should only use this SINGLE function.
-def compute_cell_classification(neural_dataset_key, version, additional_params=None):
+def compute_cell_classification(neural_dataset_key, version, additional_params=None, readonly=False):
     assert additional_params is None  # for future extension.
     key_to_use = '/'.join([neural_dataset_key, str(version), str(additional_params)])
-    with h5py.File(_global_dict['cell_classification']) as f:
+    with h5py.File(_global_dict['cell_classification'], 'r' if readonly else 'a') as f:
         if key_to_use not in f:
             # compute and save
             dict_all = _compute_cell_classification_inner(neural_dataset_key, version, additional_params)
@@ -80,10 +80,10 @@ def _check_parition(master_label, label_counter):
     assert np.array_equal(np.unique(label_counter), np.array([0, 1]))
 
 
-def _get_ready_to_use_classification_coarse():
+def _get_ready_to_use_classification_coarse(readonly):
     class_dict_final = dict()
     for dataset in ('MkA_Shape', 'MkE2_Shape'):
-        classification_dict_all = compute_cell_classification(dataset, 3)
+        classification_dict_all = compute_cell_classification(dataset, 3, readonly=readonly)
         class_dict_this = dict()
         # print(classification_dict_all.keys())
         label_counter_sub = None
@@ -101,11 +101,11 @@ def _get_ready_to_use_classification_coarse():
     return class_dict_final
 
 
-def _get_ready_to_use_classification_detailed():
+def _get_ready_to_use_classification_detailed(readonly):
     # https://github.com/leelabcnbc/tang_jcompneuro/blob/d8e3bb719df89765723a25607baf0d4189162cd6/thesis_plots/v1_fitting/comparison_among_cnn_glm_vgg_decomposed_by_fine_subsets.ipynb
     class_dict_final = dict()
     for dataset in ('MkA_Shape', 'MkE2_Shape'):
-        classification_dict_all = compute_cell_classification(dataset, 3)
+        classification_dict_all = compute_cell_classification(dataset, 3, readonly=readonly)
         class_dict_this = dict()
         # print(classification_dict_all.keys())
         for subset, detailed in subset_decompose_dict.items():
@@ -135,11 +135,11 @@ def _get_ready_to_use_classification_detailed():
     return class_dict_final
 
 
-def get_ready_to_use_classification(coarse=True):
+def get_ready_to_use_classification(coarse=True, readonly=False):
     if coarse:
-        return _get_ready_to_use_classification_coarse()
+        return _get_ready_to_use_classification_coarse(readonly)
     else:
-        return _get_ready_to_use_classification_detailed()
+        return _get_ready_to_use_classification_detailed(readonly)
 
 
 class CellTypeCriterionSingle:

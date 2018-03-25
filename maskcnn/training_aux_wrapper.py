@@ -18,7 +18,8 @@ import os.path
 from tang_jcompneuro import dir_dictionary
 import h5py
 
-cell_class_dict = get_ready_to_use_classification()
+# if not, concurrent read/write mode can make h5py fail, sometimes.
+cell_class_dict = get_ready_to_use_classification(readonly=True)
 
 
 def load_data(dataset, image_subset, neuron_subset, seed):
