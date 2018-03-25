@@ -315,7 +315,7 @@ class CNN(nn.Module):
         if self.final_act is None:
             b = mean_response
         else:
-            raise RuntimeError('should not be here for a regular CNN, which has linear output')
+            # raise RuntimeError('should not be here for a regular CNN, which has linear output')
             # well this controls last layer
             if self.act_fn == 'softplus':
                 b = inv_softplus(mean_response)

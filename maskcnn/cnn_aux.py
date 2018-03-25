@@ -38,7 +38,7 @@ def get_maskcnn_v1_arch_config(out_channel=48, kernel_size_l1=13,
 
 
 def get_maskcnn_v1_opt_config(layer=3, group=0.05, smoothness=0.03, scale=0.02,
-                              legacy=True, bn_scale_nolearning=True):
+                              legacy=True, bn_scale_nolearning=True, loss_type='poisson'):
     assert layer >= 1
     conv1_config = generate_one_conv_layer_opt_config(0.0, smoothness)
     conv2_higher_config = generate_one_conv_layer_opt_config(group, 0.0)
@@ -46,7 +46,7 @@ def get_maskcnn_v1_opt_config(layer=3, group=0.05, smoothness=0.03, scale=0.02,
     return generate_one_opt_config(
         [conv1_config, ] + [deepcopy(conv2_higher_config) for _ in range(layer - 1)],
         generate_one_fc_layer_opt_config(scale),
-        'poisson', generate_one_optimizer_config('adam',
+        loss_type, generate_one_optimizer_config('adam',
                                                  bn_scale_nolearning=bn_scale_nolearning),
         legacy=legacy
     )
@@ -81,7 +81,11 @@ def get_optimizer(model: CNN, optimizer_config: dict):
 
 def _get_output_loss(yhat, y, loss_type, legacy):
     if loss_type == 'mse':
-        return mse_loss(yhat, y)
+        # return mse_loss(yhat, y)
+        if legacy:
+            return torch.mean(torch.sum((yhat - y) ** 2, 1))
+        else:
+            return mse_loss(yhat, y)
     elif loss_type == 'poisson':
         # 1e-5 is for numerical stability.
         # same in NIPS2017 (mask CNN) code.
@@ -89,6 +93,10 @@ def _get_output_loss(yhat, y, loss_type, legacy):
             return torch.mean(yhat - y * torch.log(yhat + 1e-5))
         else:
             # I don't like it. but this is for reproducing their code
+            # TODO: actually this is probably correct, as their readout loss
+            # for fc layer uses sum (which scales with # of neurons).
+            # given that in my experiments I set conv kernel penalty to zero,
+            # I think a loss that scales is good.
             return torch.mean(torch.sum(yhat - y * torch.log(yhat + 1e-5), 1))
     else:
         raise NotImplementedError
