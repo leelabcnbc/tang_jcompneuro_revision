@@ -18,10 +18,10 @@ if __name__ == '__main__':
     print(subtype_to_train)
     # input('haha')
     script_dict = generate_all_scripts(header, 'cnnpre', subtype_to_train,
-                                       override={
-                                           # 'seed_list': range(1),
-                                           'neural_dataset_to_process': ('MkA_Shape',),
-                                           'subset_list': ('all',)
-                                       },
+                                       # override={
+                                       #     # 'seed_list': range(1),
+                                       #     'neural_dataset_to_process': ('MkA_Shape',),
+                                       #     'subset_list': ('all',)
+                                       # },
                                        )
     run_all_scripts(script_dict, slurm=use_slurm)
