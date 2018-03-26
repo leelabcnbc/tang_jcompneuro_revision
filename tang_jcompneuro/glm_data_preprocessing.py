@@ -49,10 +49,10 @@ def get_q_model(X, loc):
     return x_flat_all, x_flat.shape[1]
 
 
-def get_q_model_pca_trans(x_flat_all, size_x_linear, max_total_dim):
+def get_q_model_pca_trans(x_flat_all, size_x_linear, max_total_dim_inner):
     num_feature = x_flat_all.shape[1]
     pca_feature = min(num_feature - size_x_linear,
-                      max_total_dim - size_x_linear,
+                      max_total_dim_inner - size_x_linear,
                       x_flat_all.shape[0])
     assert size_x_linear == 400
     assert pca_feature > 1
@@ -85,17 +85,19 @@ def original_data_check(X_original):
 
 
 class GLMDataPreprocesser:
-    def __init__(self):
+    def __init__(self, check_original_data=True):
         self.transformer = None
         # fraction of var in transformed data (for X_train_no_val_full).
         self.per_dim_var = None
+        self.check_original_data = check_original_data
 
     def get_transformer(self, X_train_no_val_full):
         # always use the 100% train (without validation) version to get transformation.
         raise NotImplementedError
 
     def transform(self, X: np.ndarray):
-        original_data_check(X)
+        if self.check_original_data:
+            original_data_check(X)
         assert self.transformer is not None, "run get_transformer first"
         data_return = self.transformer(X)
         # return self.transform_post(x_intermediate)
@@ -135,10 +137,10 @@ class FPGLMPreprocessor(GLMDataPreprocesser):
 
 class GQMPreprocessor(GLMDataPreprocesser):
     # let's first try 1032 for debugging purpose.
-    def __init__(self, locality, max_total_dim):
+    def __init__(self, locality, max_total_dim_inner):
         super().__init__()
         self.locality = locality
-        self.max_total_dim = max_total_dim
+        self.max_total_dim = max_total_dim_inner
 
     def get_transformer(self, X_train_no_val_full):
         # first, perform FP transformation.

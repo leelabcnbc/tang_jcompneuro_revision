@@ -15,6 +15,7 @@ from . import dir_dictionary
 from . import io
 from . import data_preprocessing
 from .model_fitting_glm import suffix_fn as suffix_fn_glm, get_trainer as get_trainer_glm
+from .model_fitting_cnnpre import suffix_fn as suffix_fn_cnnpre, get_trainer as get_trainer_cnnpre
 from .io import load_split_dataset
 from subprocess import run
 from itertools import product
@@ -34,11 +35,13 @@ validation_dict = {
     'cnn': True,
     'glm': True,
     # 'gabor': False,
+    'cnnpre': True,
 }
 
 switch_val_test_dict = {
     'cnn': False,
     'glm': True,
+    'cnnpre': True,
 }
 
 
@@ -53,7 +56,8 @@ def cnn_suffix_fn(x):
 suffix_fn_dict = {
     'cnn': cnn_suffix_fn,
     'glm': lambda x: suffix_fn_glm(x),
-    # 'gabor': lambda x: None
+    # 'gabor': lambda x: None,
+    'cnnpre': lambda x: suffix_fn_cnnpre(x),
 }
 
 
@@ -72,18 +76,21 @@ def cnn_top_dim_fn(x):
 top_dim_fn_dict = {
     'cnn': cnn_top_dim_fn,
     'glm': lambda x: None,
+    'cnnpre': lambda x: None,
     # 'gabor': lambda x: None
 }
 
 split_steps_fn_dict = {
     'cnn': lambda x: 50,
     'glm': lambda x: 100,
+    'cnnpre': lambda x: 100,
     # 'gabor': lambda x: 25,
 }
 
 eval_fn_dict = {
     'cnn': partial(eval_fn_particular_dtype, dtype=np.float32),
     'glm': partial(eval_fn_particular_dtype, dtype=np.float64),
+    'cnnpre': partial(eval_fn_particular_dtype, dtype=np.float64),
 }
 
 # what portions of datasets to train.
@@ -96,13 +103,15 @@ training_portions_fn_dict = {
                       # 'neural_dataset_to_process': ('MkE2_Shape',),
                       # 'neural_dataset_to_process': ('MkA_Shape',)
                       },
-    'glm': lambda x: {'seed_list': range(2), 'train_percentage_list': (25, 50)},
+    'glm': lambda x: {'seed_list': range(2),},
+    'cnnpre': lambda x: {'seed_list': range(2), 'train_percentage_list': (100,)},
 }
 
 chunk_dict = {
     'cnn': 5,
     # 'cnn': None,
     'glm': None,
+    'cnnpre': None,
 }
 
 assert (validation_dict.keys() == suffix_fn_dict.keys() ==
@@ -149,6 +158,8 @@ def get_trainer(model_type, model_subtype):
     elif model_type == 'cnn':
         from .model_fitting_cnn import get_trainer as get_trainer_cnn
         trainer = get_trainer_cnn(model_subtype)
+    elif model_type == 'cnnpre':
+        trainer = get_trainer_cnnpre(model_subtype)
     else:
         raise NotImplementedError
 
@@ -157,7 +168,7 @@ def get_trainer(model_type, model_subtype):
 
 def dataset_spec_encode(neural_dataset_key, subset, percentage: int, seed: int):
     encoded = '@'.join([neural_dataset_key, subset, str(percentage), str(seed)])
-    assert encoded == quote(encoded)
+    assert encoded == quote(encoded) and '/' not in encoded
 
     # check decode
     assert dataset_spec_decode(encoded) == (neural_dataset_key, subset, percentage, seed)
@@ -174,7 +185,7 @@ def dataset_spec_decode(encoded):
 
 def neuron_spec_encode(neuron_start, neuron_end):
     encoded = '-'.join([str(neuron_start), str(neuron_end)])
-    assert encoded == quote(encoded)
+    assert encoded == quote(encoded) and '/' not in encoded
     assert neuron_spec_decode(encoded) == (neuron_start, neuron_end)
     # check decode
     return encoded
@@ -286,8 +297,8 @@ cd {dir_dictionary['root']}
                                f"model_fitting_{{model_type}}_{{model_subtype}}_{{dataset_spec}}_{{neuron_spec}}"
                                ).strip()
 
-    assert isinstance(model_type, str) and quote(model_type) == model_type
-    assert isinstance(model_subtype, str) and quote(model_subtype) == model_subtype
+    assert isinstance(model_type, str) and quote(model_type) == model_type and '/' not in model_type
+    assert isinstance(model_subtype, str) and quote(model_subtype) == model_subtype and '/' not in model_subtype
 
     script_to_run = header + '\n' + template_function_middle + '\n\n\n'
     if isinstance(neuron_spec_or_spec_list, str):

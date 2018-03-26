@@ -14,7 +14,13 @@ def split_file_name_gen(suffix=None):
         return os.path.join(dir_dictionary['datasets'], 'split_datasets.hdf5')
     else:
         assert isinstance(suffix, str)
-        return os.path.join(dir_dictionary['datasets'], f'split_datasets_{suffix}.hdf5')
+        if '/' not in suffix:
+            return os.path.join(dir_dictionary['datasets'], f'split_datasets_{suffix}.hdf5')
+        else:
+            # this is for cnn pretrained.
+            dir_this = os.path.join(dir_dictionary['datasets'], 'cnn_pretrained', suffix)
+            os.makedirs(dir_this, exist_ok=True)
+            return os.path.join(dir_this, 'split_datasets.hdf5')
 
 
 split_data_file = split_file_name_gen()
