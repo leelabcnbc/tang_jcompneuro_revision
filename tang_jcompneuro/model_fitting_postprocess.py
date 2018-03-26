@@ -269,7 +269,7 @@ def _generic_callback(name, obj, env: dict, only_check_key=False):
             # extract corr_val
             if model_type == 'cnn':
                 corr_val_this = obj.attrs['best_val']
-            elif model_type == 'glm':
+            elif model_type == 'glm' or model_type == 'cnnpre':
                 corr_val_this = obj['model/corr_val'][()]
             else:
                 raise NotImplementedError

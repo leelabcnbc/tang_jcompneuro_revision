@@ -28,7 +28,7 @@ def get_trainer(model_subtype):
 def subtypes_to_train_gen():
     all_subtypes = []
     for net_name, blobs_info in blob_corresponding_info.items():
-        if net_name != 'vgg16':
+        if net_name != 'vgg16_bn':
             continue
         for blob in blobs_info.keys():
             all_subtypes.append(

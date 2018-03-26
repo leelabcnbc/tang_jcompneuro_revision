@@ -144,6 +144,8 @@ def main():
         #     with h5py.File(split_file_name_gen(name)) as f_out:
         #         handle_one_case_outer(config, f_in_idx, f_out)
         for net_name, blob_names in blob_corresponding_info.items():
+            # if net_name == 'vgg16':
+            #     continue
             blob_names_keys = list(blob_names.keys())
             for blob_idx, blob_name in enumerate(blob_names_keys):
                 with h5py.File(split_file_name_gen('/'.join([net_name, 'legacy', blob_name]))) as f_out:
