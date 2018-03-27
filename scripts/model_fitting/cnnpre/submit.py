@@ -17,7 +17,8 @@ if __name__ == '__main__':
     use_slurm = len(argv) == 1
     print(subtype_to_train)
     # input('haha')
-    script_dict = generate_all_scripts(header, 'cnnpre', subtype_to_train,
+    script_dict = generate_all_scripts(header, 'cnnpre', subtype_to_train
+                                       # [x for x in subtype_to_train if x.startswith('vgg19')],
                                        # override={
                                        #     # 'seed_list': range(1),
                                        #     'neural_dataset_to_process': ('MkA_Shape',),
