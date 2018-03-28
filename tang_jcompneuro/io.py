@@ -224,7 +224,7 @@ def get_num_im_all_datasets():
 
 def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
                        percentage=100, seed=0, last_val=True, suffix=None,
-                       top_dim=None):
+                       top_dim=None, subtract_mean=False):
     assert isinstance(with_val, bool)
     val_part = 'with_val' if with_val else 'without_val'
     if isinstance(neuron_idx_slice, int):
@@ -262,6 +262,12 @@ def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
 
             assert X_val.ndim == 2 and X_val.shape[1] >= top_dim
             X_val = X_val[:, :top_dim]
+
+        if subtract_mean:
+            # this is for gabor
+            assert last_val and not with_val
+            X_train -= X_train.mean(axis=tuple(range(1, X_train.ndim)), keepdims=True)
+            X_test -= X_test.mean(axis=tuple(range(1, X_test.ndim)), keepdims=True)
 
         if last_val:
             result = (X_train, y_train, X_test, y_test, X_val, y_val)

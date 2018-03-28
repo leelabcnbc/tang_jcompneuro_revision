@@ -16,6 +16,7 @@ from . import io
 from . import data_preprocessing
 from .model_fitting_glm import suffix_fn as suffix_fn_glm, get_trainer as get_trainer_glm
 from .model_fitting_cnnpre import suffix_fn as suffix_fn_cnnpre, get_trainer as get_trainer_cnnpre
+from .model_fitting_gabor import get_trainer as get_trainer_gabor
 from .io import load_split_dataset
 from subprocess import run
 from itertools import product
@@ -34,7 +35,7 @@ def eval_fn_particular_dtype(yhat: np.ndarray, y: np.ndarray, dtype):
 validation_dict = {
     'cnn': True,
     'glm': True,
-    # 'gabor': False,
+    'gabor': False,
     'cnnpre': True,
 }
 
@@ -42,6 +43,7 @@ switch_val_test_dict = {
     'cnn': False,
     'glm': True,
     'cnnpre': True,
+    'gabor': True,
 }
 
 
@@ -56,7 +58,7 @@ def cnn_suffix_fn(x):
 suffix_fn_dict = {
     'cnn': cnn_suffix_fn,
     'glm': lambda x: suffix_fn_glm(x),
-    # 'gabor': lambda x: None,
+    'gabor': lambda x: None,
     'cnnpre': lambda x: suffix_fn_cnnpre(x),
 }
 
@@ -77,18 +79,27 @@ top_dim_fn_dict = {
     'cnn': cnn_top_dim_fn,
     'glm': lambda x: None,
     'cnnpre': lambda x: None,
-    # 'gabor': lambda x: None
+    'gabor': lambda x: None
+}
+
+subtract_mean_dict = {
+    'cnn': False,
+    'glm': False,
+    'cnnpre': False,
+    'gabor': True,
 }
 
 split_steps_fn_dict = {
     'cnn': lambda x: 50,
     'glm': lambda x: 100,
     'cnnpre': lambda x: 100,
-    # 'gabor': lambda x: 25,
+    # really slow.
+    'gabor': lambda x: 10,
 }
 
 eval_fn_dict = {
     'cnn': partial(eval_fn_particular_dtype, dtype=np.float32),
+    'gabor': partial(eval_fn_particular_dtype, dtype=np.float32),
     'glm': partial(eval_fn_particular_dtype, dtype=np.float64),
     'cnnpre': partial(eval_fn_particular_dtype, dtype=np.float64),
 }
@@ -103,8 +114,9 @@ training_portions_fn_dict = {
                       # 'neural_dataset_to_process': ('MkE2_Shape',),
                       # 'neural_dataset_to_process': ('MkA_Shape',)
                       },
-    'glm': lambda x: {'seed_list': range(2),},
+    'glm': lambda x: {'seed_list': range(2), },
     'cnnpre': lambda x: {'seed_list': range(2), 'train_percentage_list': (100,)},
+    'gabor': lambda x: {'seed_list': range(2), 'train_percentage_list': (100,)},
 }
 
 chunk_dict = {
@@ -112,12 +124,13 @@ chunk_dict = {
     # 'cnn': None,
     'glm': None,
     'cnnpre': None,
+    'gabor': None,
 }
 
 assert (validation_dict.keys() == suffix_fn_dict.keys() ==
         split_steps_fn_dict.keys() == training_portions_fn_dict.keys() ==
         switch_val_test_dict.keys() == chunk_dict.keys() == eval_fn_dict.keys() ==
-        top_dim_fn_dict.keys())
+        top_dim_fn_dict.keys() == subtract_mean_dict.keys())
 
 _cache_vars = {'num_neuron_dict': None,
                'num_im_dict': None}
@@ -160,6 +173,8 @@ def get_trainer(model_type, model_subtype):
         trainer = get_trainer_cnn(model_subtype)
     elif model_type == 'cnnpre':
         trainer = get_trainer_cnnpre(model_subtype)
+    elif model_type == 'gabor':
+        trainer = get_trainer_gabor(model_subtype)
     else:
         raise NotImplementedError
 
@@ -232,8 +247,13 @@ def train_one_case_generic_save_data(train_result: dict, key_this: str, f_out: h
             grp_this.attrs[k] = v
     if 'model' in train_result:
         grp_this_model = grp_this.create_group('model')
-        for k_model, v_model in train_result['model'].items():
-            grp_this_model.create_dataset(k_model, data=v_model)
+        if isinstance(train_result['model'], dict):
+            for k_model, v_model in train_result['model'].items():
+                grp_this_model.create_dataset(k_model, data=v_model)
+        else:
+            # for Gabor.
+            assert callable(train_result['model'])
+            train_result['model'](grp_this_model)
 
     f_out.flush()
 
@@ -261,7 +281,8 @@ def train_one_case_generic(model_type, model_subtype, dataset_spec, neuron_spec)
                                           neuron_range, percentage=percentage,
                                           seed=seed, last_val=not switch_val_test_dict[model_type],
                                           suffix=suffix_fn_dict[model_type](model_subtype),
-                                          top_dim=top_dim_fn_dict[model_type](model_subtype))
+                                          top_dim=top_dim_fn_dict[model_type](model_subtype),
+                                          subtract_mean=subtract_mean_dict[model_type])
         # then training one by one.
         for neuron_idx_relative, neuron_idx_real in enumerate(range(neuron_start, neuron_end)):
             key_this = key_to_save + '/' + str(neuron_idx_real)
