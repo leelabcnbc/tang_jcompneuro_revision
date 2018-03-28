@@ -69,14 +69,17 @@ def load_data_generic(models_to_examine, *,
             # print(xxx)
             use_sub = False
             use_sub_test = False
+            subtypes_to_check = None
             if len(xxx) == 2:
                 model_type, model_subtype = xxx
             elif len(xxx) == 3:
                 model_type, model_subtype, use_sub = xxx
                 use_sub_test = False
-            else:
-                assert len(xxx) == 4
+            elif len(xxx) == 4:
                 model_type, model_subtype, use_sub, use_sub_test = xxx
+            else:
+                assert len(xxx) == 5
+                model_type, model_subtype, use_sub, use_sub_test, subtypes_to_check = xxx
             if (model_type, model_subtype) in avoidance:
                 continue
 
@@ -90,7 +93,8 @@ def load_data_generic(models_to_examine, *,
                 score_new_cc = np.asarray(
                     [load_model_performance(dataset, subset, percentage, s, model_type, model_subtype,
                                             use_sub=use_sub, use_sub_test=use_sub_test, metric=metric,
-                                            squared=squared)['corr'] for s in seeds]).mean(axis=0)
+                                            squared=squared,
+                                            subtypes_to_check=subtypes_to_check)['corr'] for s in seeds]).mean(axis=0)
 
                 score_all.append({
                     'dataset': dataset,
@@ -186,21 +190,27 @@ def load_model_performance(neural_dataset_key, subset, percentage, seed, model_t
                            load_y_test_hat=False,
                            load_corr_val=True,
                            use_sub=False, use_sub_test=False,
-                           metric: str = 'raw', squared=False):
+                           metric: str = 'raw', squared=False, subtypes_to_check=None):
     if not use_sub:
+        assert subtypes_to_check is None and not use_sub_test
         return _load_model_performance_one(neural_dataset_key, subset, percentage, seed, model_type, model_subtype,
                                            load_corr, load_y_test_hat, load_corr_val, metric, squared)
     else:
-        assert '@' not in model_subtype
+        if subtypes_to_check is None:
+            assert '@' not in model_subtype
+            # by default it handles my CNN optimization issue.
+            subtypes_to_check = [model_subtype + suffix for suffix in ('', '@0.05', '@0.005')]
+            # but it can also be used to construct things like gabor_all, glm_all, etc.
+
         result_list = [_load_model_performance_one(neural_dataset_key,
-                                                   subset, percentage, seed, model_type, model_subtype + suffix,
+                                                   subset, percentage, seed, model_type, subtype,
                                                    load_corr, load_y_test_hat, load_corr_val, metric, squared
-                                                   ) for suffix in ('', '@0.05', '@0.005')]
+                                                   ) for subtype in subtypes_to_check]
 
         # get argmax via corr_val
         corr_val_all = np.array(
             [result_this['corr' if use_sub_test else 'corr_val'] for result_this in result_list])
-        assert corr_val_all.ndim == 2 and corr_val_all.shape[0] == 3
+        assert corr_val_all.ndim == 2 and corr_val_all.shape[0] == len(subtypes_to_check)
         max_model_each = np.argmax(corr_val_all, axis=0)
         assert max_model_each.shape == (corr_val_all.shape[1],)
         # then take max of each one.
