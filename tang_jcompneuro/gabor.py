@@ -338,7 +338,7 @@ def init_and_predict_one_net_from_extracted_params(x: np.ndarray, y: np.ndarray,
     corr = pearsonr(output[0], y)[0]
     if not np.isfinite(corr):
         corr = 0.0
-    return corr, output
+    return corr, output.T
 
 
 def gabor_training_wrapper(x: np.ndarray, y: np.ndarray, class_this, class_params=None, num_batch=None,
