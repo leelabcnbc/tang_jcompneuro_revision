@@ -1,6 +1,6 @@
 """this handles some basic plotting functions"""
 
-from typing import List, Tuple
+from typing import List
 import numpy as np
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
@@ -17,6 +17,73 @@ image_subset_and_neuron_subset_list = (
     ('all', 'OT'),
     ('all', 'HO')
 )
+
+
+def show_one_main(stat_sub_array: list, stat_all_array: list, stat_name_array: list, *,
+                  ax: Axes = None, title: str = None, ylabel: str = None,
+                  yticks=(0, 0.2, 0.4, 0.6, 0.8, 1),
+                  yticklabels=('0', '0.2', '0.4', '0.6', '0.8', '1'),
+                  color_list=None, stat_ref_name='cnn',
+                  ):
+    # based on https://github.com/leelabcnbc/tang_jcompneuro/blob/master/thesis_plots/v1_fitting/results_basic.ipynb
+    assert len(stat_sub_array) == len(stat_all_array) == len(stat_name_array)
+    if ax is None:
+        ax = plt.gca()
+
+    if color_list is None:
+        # https://matplotlib.org/examples/color/colormaps_reference.html
+        color_list = plt.get_cmap('Set1').colors
+
+    stat_all_ref = stat_all_array[stat_name_array.index(stat_ref_name)]
+    counter_now = 0
+    label_grp = []
+    rect_grp = []
+    for model_class_idx, (stat_sub, stat_all, stat_name) in enumerate(
+            zip(stat_sub_array, stat_all_array, stat_name_array)):
+        num_model_this = len(stat_sub)
+        model_names, model_perfs = zip(*stat_sub)
+        rects_this = ax.bar(counter_now + np.arange(num_model_this) + 1,
+                            model_perfs,
+                            0.95, color=color_list[model_class_idx])
+
+        label_grp.append(stat_name)
+        rect_grp.append(rects_this[0])
+
+        for text_idx, text in enumerate(model_names):
+            ax.text(text_idx + 1 + counter_now,
+                    model_perfs[text_idx],
+                    s=text, rotation='vertical', horizontalalignment='center',
+                    verticalalignment='top', color='white', fontsize='small')
+
+        assert stat_all is not None
+        rc, = ax.plot([counter_now + 0.5, counter_now + num_model_this + 0.5], [stat_all, stat_all],
+                      color=color_list[model_class_idx], linestyle='--')
+        rect_grp.append(rc)
+        label_grp.append(f'{stat_name}_all')
+        ax.text(counter_now + num_model_this / 2 + 0.5, stat_all, s='{:.3f}'.format(stat_all),
+                horizontalalignment='center',
+                verticalalignment='bottom', color='black', fontsize='small')
+        if stat_name != stat_ref_name:
+            # this works because CNN model is put first.
+            ax.text(counter_now + num_model_this / 2 + 0.5,
+                    stat_all + 0.1, s='{:.1f}%'.format(((stat_all_ref / stat_all) - 1) * 100),
+                    horizontalalignment='center',
+                    verticalalignment='bottom', color='black', fontsize='x-small', fontweight='bold')
+        counter_now += num_model_this + 1
+
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
+
+    ax.set_xlim(0, counter_now)
+    ax.set_ylim(0, 1)
+    ax.set_xticks([])
+
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(yticklabels)
+
+    ax.legend(rect_grp, label_grp, loc='best', fontsize='small', ncol=2, columnspacing=0)
 
 
 def show_one_basic(x: np.ndarray, y: np.ndarray, *,
