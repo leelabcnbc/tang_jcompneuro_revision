@@ -18,6 +18,6 @@ if __name__ == '__main__':
     use_slurm = len(argv) == 1
     print(models_to_train)
     # input('haha')
-    script_dict = generate_all_scripts(header, 'gabor', [('simple',)]
+    script_dict = generate_all_scripts(header, 'gabor', ('simple',)
                                        )
     run_all_scripts(script_dict, slurm=use_slurm)

@@ -57,7 +57,7 @@ def decompose_model_subtype(model_subtype):
     return class_this, class_params
 
 
-def get_trainer(model_subtype, cudnn_enabled=True, cudnn_benchmark=False):
+def get_trainer(model_subtype, cudnn_enabled=False, cudnn_benchmark=False):
     class_this, class_params = decompose_model_subtype(model_subtype)
     print(class_this, class_params)
 

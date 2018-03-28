@@ -40,10 +40,12 @@ validation_dict = {
 }
 
 switch_val_test_dict = {
+    # False if last being val
+    # True if middle being val.
     'cnn': False,
     'glm': True,
     'cnnpre': True,
-    'gabor': True,
+    'gabor': False,
 }
 
 
