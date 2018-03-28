@@ -271,6 +271,8 @@ def _generic_callback(name, obj, env: dict, only_check_key=False):
                 corr_val_this = obj.attrs['best_val']
             elif model_type == 'glm' or model_type == 'cnnpre':
                 corr_val_this = obj['model/corr_val'][()]
+            elif model_type == 'gabor':
+                corr_val_this = obj.attrs['corr_train']
             else:
                 raise NotImplementedError
 

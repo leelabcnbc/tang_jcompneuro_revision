@@ -18,6 +18,11 @@ if __name__ == '__main__':
     use_slurm = len(argv) == 1
     print(models_to_train)
     # input('haha')
-    script_dict = generate_all_scripts(header, 'gabor', ('simple',)
+    script_dict = generate_all_scripts(header, 'gabor', ('complex',),
+                                       # override={
+                                       #     'seed_list': [1],
+                                       #     'neural_dataset_to_process': ('MkA_Shape',),
+                                       #     'subset_list': ('OT',)
+                                       # },
                                        )
     run_all_scripts(script_dict, slurm=use_slurm)
