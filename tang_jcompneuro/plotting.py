@@ -200,3 +200,49 @@ def show_perf_vs_size(x_list: List[np.ndarray],
 
     if show_legend:
         ax.legend()
+
+
+def show_one_decomposed_bar(stat_chunks_array, stat_name_array, *,
+                            ax: Axes = None, xlabel=None,
+                            title=None,
+                            color_bias: int = None, set_ylabel=False):
+    # https://github.com/leelabcnbc/tang_jcompneuro/blob/master/thesis_plots/v1_fitting/comparison_among_all_non_vgg_models_decomposed_by_fine_subsets.ipynb
+    color_list = plt.get_cmap('Set2').colors
+
+    assert isinstance(stat_chunks_array, np.ndarray) and stat_chunks_array.ndim == 2
+    assert stat_chunks_array.shape[1] == len(stat_name_array)
+
+    assert color_bias is not None
+
+    if ax is None:
+        ax = plt.gca()
+
+    n_model = len(stat_name_array)
+
+    data_mean_bottom = np.zeros((n_model,), dtype=np.float64)
+    for chunk_idx, chunk_data in enumerate(stat_chunks_array):
+        ax.barh(np.arange(n_model) + 1,
+                chunk_data, height=0.95,
+                left=data_mean_bottom,
+                color=color_list[color_bias + chunk_idx])
+        assert data_mean_bottom.shape == chunk_data.shape
+        data_mean_bottom += chunk_data
+    ax.set_xlim(0, data_mean_bottom.max() * 1.1)
+    ax.set_ylim(0, n_model + 2)
+
+    if set_ylabel:
+        ax.set_yticks(np.arange(n_model)+1)
+        ax.set_yticklabels(stat_name_array, fontdict={'fontsize': 'medium'})
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+
+    if title is not None:
+        ax.set_title(title)
+
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
+
+def show_one_decomposed_scatter():
+    pass
