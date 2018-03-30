@@ -162,6 +162,7 @@ def show_perf_vs_size(x_list: List[np.ndarray],
                       style_list=None,
                       linewidth=1,
                       show_legend=True,
+                      legend_param=None,
                       vline=None,
                       hline=None,
                       # letter=None,
@@ -209,7 +210,10 @@ def show_perf_vs_size(x_list: List[np.ndarray],
         ax.set_title(title)
 
     if show_legend:
-        ax.legend()
+        if legend_param is None:
+            ax.legend()
+        else:
+            ax.legend(**legend_param)
 
 
 def show_one_decomposed_bar(stat_chunks_array, stat_name_array, *,
@@ -271,7 +275,7 @@ def show_one_decomposed_bar(stat_chunks_array, stat_name_array, *,
 
 
 def show_one_decomposed_scatter(raw_chunks_x, raw_chunks_y, *,
-                                ax: Axes=None, xlabel=None, ylabel=None,
+                                ax: Axes = None, xlabel=None, ylabel=None,
                                 title=None,
                                 color_bias: int = None, letter_map=None):
     if letter_map is not None:
