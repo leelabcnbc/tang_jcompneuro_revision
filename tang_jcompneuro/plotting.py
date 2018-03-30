@@ -165,6 +165,7 @@ def show_perf_vs_size(x_list: List[np.ndarray],
                       legend_param=None,
                       vline=None,
                       hline=None,
+                      xlabel_param=None,
                       # letter=None,
                       ):
     """x being model size, number of parameter, dataset size, etc.
@@ -174,6 +175,9 @@ def show_perf_vs_size(x_list: List[np.ndarray],
     if style_list is None:
         # should give a default set
         raise NotImplementedError
+
+    if xlabel_param is None:
+        xlabel_param = dict()
 
     # if letter is not None:
     #     ax.text(0, 1, letter, horizontalalignment='left', verticalalignment='top',
@@ -199,7 +203,7 @@ def show_perf_vs_size(x_list: List[np.ndarray],
     ax.set_ylim(*ylim)
     ax.set_xticks(xticks)
     ax.set_yticks(yticks)
-    ax.set_xticklabels(xticklabels)
+    ax.set_xticklabels(xticklabels, **xlabel_param)
     ax.set_yticklabels(yticklabels)
 
     if xlabel is not None:
