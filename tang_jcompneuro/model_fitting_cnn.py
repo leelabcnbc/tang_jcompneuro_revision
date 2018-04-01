@@ -7,6 +7,8 @@ import time
 import json
 
 import numpy as np
+import h5py
+
 from .configs import cnn_opt, cnn_arch, cnn_init
 from .cnn import CNN
 from .training_aux import train_one_case, count_params
@@ -15,6 +17,23 @@ from .training_aux import train_one_case, count_params
 # sets of opt configs to use.
 # based on
 # https://github.com/leelabcnbc/tang_jcompneuro_revision/blob/master/results_ipynb/single_neuron_exploration/cnn_initial_exploration.ipynb
+
+def save_one_model(model: CNN, group: h5py.Group):
+    for x, y in model.named_parameters():
+        print(x, y.size())
+        data_y = y.data.cpu().numpy()
+        if x not in group:
+            group.create_dataset(x, data=data_y)
+        else:
+            data_y_ref = group[x][...]
+            assert data_y.shape == data_y_ref.shape
+            # print(abs(data_y - data_y_ref).max())
+            assert np.array_equal(data_y, data_y_ref)
+            # for some reason. I can't use array_equal, even if cudnn is disabled.
+            # NO such thing. just my bug in the code.
+            # assert abs(data_y - data_y_ref).max() < 1e-4
+    group.file.flush()
+
 
 def _opt_configs_to_explore_1layer(num_layer=1):
     """set of opt configs to use.
