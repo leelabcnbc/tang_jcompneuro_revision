@@ -224,9 +224,11 @@ def show_one_decomposed_bar(stat_chunks_array, stat_name_array, *,
                             ax: Axes = None, xlabel=None,
                             title=None,
                             color_bias: int = None, set_ylabel=False,
-                            ylabel_styles=None, letter_map=None):
+                            ylabel_styles=None, letter_map=None, color_list=None,
+                            height=0.95):
     # https://github.com/leelabcnbc/tang_jcompneuro/blob/master/thesis_plots/v1_fitting/comparison_among_all_non_vgg_models_decomposed_by_fine_subsets.ipynb
-    color_list = plt.get_cmap('Set2').colors
+    if color_list is None:
+        color_list = plt.get_cmap('Set2').colors
 
     assert isinstance(stat_chunks_array, np.ndarray) and stat_chunks_array.ndim == 2
     assert stat_chunks_array.shape[1] == len(stat_name_array)
@@ -244,7 +246,7 @@ def show_one_decomposed_bar(stat_chunks_array, stat_name_array, *,
     data_mean_bottom = np.zeros((n_model,), dtype=np.float64)
     for chunk_idx, chunk_data in enumerate(stat_chunks_array):
         ax.barh(np.arange(n_model) + 1,
-                chunk_data, height=0.95,
+                chunk_data, height=height,
                 left=data_mean_bottom,
                 color=color_list[color_bias + chunk_idx])
         assert data_mean_bottom.shape == chunk_data.shape
