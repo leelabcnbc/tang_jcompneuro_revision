@@ -38,7 +38,8 @@ def get_q_model_pca_trans(x_flat_all, max_total_dim_this):
         assert x.ndim == 2
         return pca_obj.transform(x)
 
-    return transformer, pca_obj.explained_variance_ratio_.copy()
+    return transformer, pca_obj.explained_variance_ratio_.copy(), (pca_obj.mean_.copy(),
+                                                                   pca_obj.components_.copy())
 
 
 class CNNPreprocessor(GLMDataPreprocesser):
@@ -46,13 +47,15 @@ class CNNPreprocessor(GLMDataPreprocesser):
     def __init__(self, max_total_dim_this):
         super().__init__(check_original_data=False)
         self.max_total_dim = max_total_dim_this
+        # save PCA params for VGG. otherwise I won't be able to do visualization.
+        self.trans_params = None
 
     def get_transformer(self, X_train_no_val_full):
         # first, perform FP transformation.
         # and then return the remixing one.
 
-        transformer_q_pca, explaind_var_ratio_q = get_q_model_pca_trans(X_train_no_val_full,
-                                                                        self.max_total_dim)
+        transformer_q_pca, explaind_var_ratio_q, trans_params = get_q_model_pca_trans(X_train_no_val_full,
+                                                                                      self.max_total_dim)
 
         def transformer(X):
             # t1 = time.time()
@@ -63,6 +66,7 @@ class CNNPreprocessor(GLMDataPreprocesser):
 
         self.transformer = transformer
         self.per_dim_var = explaind_var_ratio_q
+        self.trans_params = trans_params
 
 
 def handle_one_case_outer(key_to_extract, f_in_idx: h5py.File, f_in_feature: h5py.File, f_out: h5py.File):
@@ -106,6 +110,12 @@ def handle_one_case(neural_dataset_key, subset, seed, key_to_extract,
     # finally, for dataset_main_name,
     # save per_dim_var in it.
     f_out[dataset_main_name].attrs['per_dim_var'] = transformer_this.per_dim_var
+    assert len(transformer_this.trans_params) == 2
+    grp_params = dataset_main_name + '/pca_params'
+    if grp_params not in f_out:
+        grp_params_grp = f_out.create_group(grp_params)
+        grp_params_grp.create_dataset('mean', data=transformer_this.trans_params[0])
+        grp_params_grp.create_dataset('components', data=transformer_this.trans_params[1])
 
 
 def handle_one_case_inner(neural_dataset_key, subset, has_val, train_percentage,

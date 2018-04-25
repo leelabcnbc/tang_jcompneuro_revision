@@ -275,3 +275,38 @@ def load_split_dataset(dataset_key, subset, with_val, neuron_idx_slice, *,
             result = (X_train, y_train, X_val, y_val, X_test, y_test)
 
     return result
+
+
+def load_split_dataset_idx(dataset_key, subset, with_val, *,
+                           percentage=100, seed=0, last_val=True):
+    assert isinstance(with_val, bool)
+    val_part = 'with_val' if with_val else 'without_val'
+    datafile_y = split_file_name_gen()
+    # when datafile_x == datafile_y, it's fine.
+    # https://github.com/h5py/h5py/issues/332
+    with h5py.File(datafile_y, 'r') as f_y:
+        g_this_y = f_y[f'/{dataset_key}/{subset}/{val_part}/{percentage}/{seed}']
+        # load X_train/test/val
+        # load y_train/test/val
+        y_train_idx = g_this_y['train'].attrs['index']
+        y_test_idx = g_this_y['test'].attrs['index']
+        y_val_idx = g_this_y['val'].attrs['index'] if 'val' in g_this_y else None
+
+        if last_val:
+            result = (y_train_idx, y_test_idx, y_val_idx)
+        else:
+            result = (y_train_idx, y_val_idx, y_test_idx)
+
+    return result
+
+
+def load_split_dataset_pretrained_pca_params(dataset_key, subset, *,
+                                             suffix, seed=0):
+    assert suffix is not None
+    datafile_x = split_file_name_gen(suffix)
+    val_part = 'without_val'
+    with h5py.File(datafile_x, 'r') as f_y:
+        g_this_x = f_y[f'/{dataset_key}/{subset}/{val_part}/100/{seed}/pca_params']
+        mean = g_this_x['mean'][...]
+        components = g_this_x['components'][...]
+    return mean, components
