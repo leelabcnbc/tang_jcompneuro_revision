@@ -381,3 +381,25 @@ def handle_one_model_type(model_type, filter=None):
                 continue
             handle_one_folder(model_type, root, files)
             # input('hi')
+
+
+def load_one_cnnpre_model(neural_dataset_key, subset, model_subtype, neuron_idx, seed):
+    model_folder = os.path.join(dir_dictionary['models'], 'cnnpre', model_subtype, neural_dataset_key,
+                                subset, '100', str(seed))
+    start_idx = 100 * (neuron_idx // 100)
+    end_idx = min(100 * (neuron_idx // 100 + 1), get_num_neuron(neural_dataset_key))
+    file_to_check = f'{start_idx}_{end_idx}.hdf5'
+
+    with h5py.File(os.path.join(model_folder, file_to_check), 'r') as f_read:
+        key = f'{neural_dataset_key}/{subset}/100/{seed}/cnnpre/{model_subtype}/{neuron_idx}'
+        y_test_hat = f_read[key]['y_test_hat'][...]
+        model_bias = f_read[key]['model/bias'][()]
+        model_coeff = f_read[key]['model/coeff'][...]
+        corr = f_read[key]['corr'][()]
+
+    return {
+        'y_test_hat': y_test_hat,
+        'model_bias': model_bias,
+        'model_coeff': model_coeff,
+        'corr': corr,
+    }
