@@ -7,6 +7,12 @@ revision of Tang JCNS paper
 
 ***TBA***
 
+check `environment.yml` for actual set of dependencies. Plus those R things below, you will be good.
+
+this file was produced by `conda env export > environment.yml`.
+
+Check <https://conda.io/docs/user-guide/tasks/manage-environments.html#exporting-the-environment-file>
+
 ~~~bash
 # install R stuff.
 conda install -c conda-forge r-base=3.4.1 rpy2=2.8.5
