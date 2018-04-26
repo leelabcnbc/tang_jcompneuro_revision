@@ -7,11 +7,19 @@ revision of Tang JCNS paper
 
 ***TBA***
 
-check `environment.yml` for actual set of dependencies. Plus those R things below, you will be good.
+check `environment.yml` for actual set of dependencies.
 
 this file was produced by `conda env export > environment.yml`.
 
 Check <https://conda.io/docs/user-guide/tasks/manage-environments.html#exporting-the-environment-file>
+
+In addition, you need the following set of libraries not installed in the conda environment. Specific commit SHAs are given.
+
+* <https://github.com/leelabcnbc/strflab-python/commit/34d6fbe1e79f07a9469ab86fb6a57a6a99fded79>
+* <https://github.com/leelabcnbc/leelab-toolbox/commit/68b11e8143fff788d07bf71353dc3aa058604137>
+* <https://github.com/raghakot/keras-vis/commit/40b27dfa3ecb84cdde5ec6b44251923c3266cc40>
+
+Plus those R things below, you will be good.
 
 ~~~bash
 # install R stuff.
